@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V16: Stable Timer</title>
+    <title>Math Arena V17: Full Ranking</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -24,23 +24,25 @@
         
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
         
-        /* === V16 新增：強力黃光選中效果 === */
+        /* 頭像與選中效果 */
         .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-slate-700 transition-all cursor-pointer grayscale opacity-70 bg-slate-800; }
-        
-        /* 選中時：黃色邊框 + 黃色強力發光 */
         .avatar-btn.selected { 
             @apply bg-slate-800 grayscale-0 opacity-100 scale-110 z-10;
-            border-color: #fbbf24; /* Amber-400 */
-            box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.6); /* 黃金光暈 */
+            border-color: #fbbf24; 
+            box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.6); 
         }
-        
         .avatar-btn.taken { @apply opacity-20 cursor-not-allowed border-red-900 bg-slate-900 scale-90 grayscale; }
 
         .kick-btn { @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors; }
 
+        /* Podium Animation */
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .podium-enter { animation: podium-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        .podium-hidden { display: none !important; }
+        .podium-hidden { visibility: hidden; opacity: 0; } /* Use visibility to keep layout space if needed, or display none logic handled in JS */
+
+        /* Rank List Animation */
+        @keyframes slide-in { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .rank-item { animation: slide-in 0.4s ease-out forwards; opacity: 0; }
     </style>
 </head>
 <body class="h-screen flex flex-col items-center justify-center bg-[#050510]">
@@ -150,29 +152,29 @@
 
     <div id="view-podium" class="text-center w-full hidden z-[100] bg-slate-950 absolute inset-0 flex flex-col items-center justify-center">
         <h1 class="text-5xl font-display text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-12 neon-gold z-10">CHAMPIONS</h1>
-        <div class="flex items-end justify-center space-x-2 md:space-x-4 mb-12 w-full max-w-3xl px-4 z-10" id="podium-container">
+        <div class="flex items-end justify-center w-full max-w-4xl px-2 z-10" id="podium-container">
             
-            <div id="podium-2" class="flex flex-col items-center podium-hidden opacity-0 order-1">
+            <div id="podium-2" class="flex flex-col items-center mx-1 md:mx-4 opacity-0" style="min-width: 80px;">
                 <div class="text-4xl mb-2" id="p2-avatar"></div>
-                <div class="text-white font-bold text-sm" id="p2-name"></div>
+                <div class="text-white font-bold text-sm truncate w-20 md:w-32" id="p2-name"></div>
                 <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg">
                     <span class="text-3xl font-black text-slate-500">2</span>
                 </div>
                 <div class="mt-2 text-cyan-400 font-bold" id="p2-score"></div>
             </div>
 
-            <div id="podium-1" class="flex flex-col items-center podium-enter opacity-0 order-2 mx-4">
+            <div id="podium-1" class="flex flex-col items-center mx-1 md:mx-4 opacity-0 z-20" style="min-width: 100px;">
                 <div class="text-7xl mb-2 animate-bounce" id="p1-avatar"></div>
-                <div class="text-yellow-400 font-bold text-xl neon-gold" id="p1-name"></div>
-                <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.4)] z-20">
+                <div class="text-yellow-400 font-bold text-xl neon-gold truncate w-24 md:w-40" id="p1-name"></div>
+                <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.4)]">
                     <span class="text-5xl font-black text-yellow-900/50">1</span>
                 </div>
                 <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score"></div>
             </div>
 
-            <div id="podium-3" class="flex flex-col items-center podium-hidden opacity-0 order-3">
+            <div id="podium-3" class="flex flex-col items-center mx-1 md:mx-4 opacity-0" style="min-width: 80px;">
                 <div class="text-4xl mb-2" id="p3-avatar"></div>
-                <div class="text-white font-bold text-sm" id="p3-name"></div>
+                <div class="text-white font-bold text-sm truncate w-20 md:w-32" id="p3-name"></div>
                 <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg">
                     <span class="text-3xl font-black text-orange-900/50">3</span>
                 </div>
@@ -180,7 +182,26 @@
             </div>
 
         </div>
-        <button onclick="location.href=location.pathname" class="btn-primary max-w-xs z-20">NEW GAME</button>
+    </div>
+
+    <div id="view-rankings" class="w-full h-full hidden z-[101] bg-slate-950 absolute inset-0 flex flex-col p-6">
+        <h2 class="text-3xl font-display text-cyan-400 text-center mb-6">FINAL STANDINGS</h2>
+        <div class="flex-1 overflow-y-auto bg-slate-900/50 rounded-xl border border-slate-800 p-4 max-w-2xl mx-auto w-full">
+            <table class="w-full text-left border-collapse">
+                <thead class="text-slate-500 border-b border-slate-700">
+                    <tr>
+                        <th class="p-2">#</th>
+                        <th class="p-2">PLAYER</th>
+                        <th class="p-2 text-right">SCORE</th>
+                    </tr>
+                </thead>
+                <tbody id="ranking-list-body">
+                    </tbody>
+            </table>
+        </div>
+        <div class="mt-4 text-center">
+            <button onclick="backToMenu()" class="btn-primary max-w-xs bg-slate-700 hover:bg-slate-600 border border-slate-500">🏠 MAIN MENU</button>
+        </div>
     </div>
 
 <script>
@@ -220,22 +241,23 @@
         score: 0, active: false,
         settings: { mode: 'time', target: 60 },
         q: null, input: '', endTime: 0,
-        hostLoop: null // 新增：Host 專用計時器
+        hostLoop: null
     };
     let localTimerInterval = null;
 
-    const views = ['view-menu','view-host-lobby','view-host-game','view-join','view-avatar-select','view-student-wait','view-game','view-podium'];
+    // Added view-rankings
+    const views = ['view-menu','view-host-lobby','view-host-game','view-join','view-avatar-select','view-student-wait','view-game','view-podium','view-rankings'];
     function showView(id) {
         views.forEach(v => document.getElementById(v).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
-        if(id.includes('host') || id === 'view-avatar-select') document.getElementById(id).classList.add('flex');
+        if(id.includes('host') || id === 'view-avatar-select' || id === 'view-rankings') document.getElementById(id).classList.add('flex');
         if(id === 'view-game') resizeCanvas();
     }
 
     window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
 
     // ======================================
-    // HOST LOGIC (V16 FIXED)
+    // HOST LOGIC
     // ======================================
     function setupHost() {
         if (!db) return alert("Database not ready.");
@@ -299,18 +321,16 @@
         document.getElementById('host-target-display').innerText = state.settings.mode==='score' ? `TARGET: ${state.settings.target}` : "TIME LEFT";
         startLocalTicker(state.settings.mode === 'time' ? state.endTime : null, 'host-timer-display');
         
-        // *** V16 FIX: 啟動獨立的主機檢查循環 ***
         if (state.hostLoop) clearInterval(state.hostLoop);
-        state.hostLoop = setInterval(hostGameLoopTick, 1000); // 每秒檢查一次
+        state.hostLoop = setInterval(hostGameLoopTick, 1000);
         
         monitorGameUpdates();
     }
 
-    // V16: 獨立的主機邏輯，不依賴 DB 變動
     function hostGameLoopTick() {
         if (state.settings.mode === 'time') {
             if (Date.now() >= state.endTime) {
-                clearInterval(state.hostLoop); // 停止檢查
+                clearInterval(state.hostLoop);
                 executeGameFinish();
             }
         }
@@ -322,17 +342,15 @@
             const game = snap.val();
             if(!game) return;
 
-            // 監聽狀態切換 (為了顯示 Podium)
             if (game.status === 'results') {
-                showPodium(game.leaderboard);
-                gameRef.off(); // 停止監聽
+                // Host 也看到 Podium，然後跳轉到 List
+                showPodiumSequence(game.finalStandings);
+                gameRef.off(); 
                 if (state.hostLoop) clearInterval(state.hostLoop);
             }
 
-            // 更新 Host 畫面長條圖
             if(game.players) {
                 const players = Object.values(game.players).sort((a,b)=>(b.score||0)-(a.score||0));
-                // 分數模式的結束檢查
                 if (state.role==='host' && game.status==='playing' && game.settings.mode==='score' && players[0].score >= game.settings.target) {
                     executeGameFinish();
                 }
@@ -342,20 +360,18 @@
     }
 
     function executeGameFinish() {
-        // 1. 廣播結束，鎖定客戶端
         db.ref(`games/${state.gameId}`).update({ status: 'finished' });
         document.getElementById('host-status-msg').style.opacity = 1;
         if(localTimerInterval) clearInterval(localTimerInterval);
 
-        // 2. 緩衝後結算
         setTimeout(() => {
             db.ref(`games/${state.gameId}/players`).once('value', s => {
                 const arr = [];
                 s.forEach(c => arr.push(c.val()));
-                // 3. 排序
                 arr.sort((a,b) => (parseInt(b.score)||0) - (parseInt(a.score)||0));
-                // 4. 寫入前三名
-                db.ref(`games/${state.gameId}`).update({ status: 'results', leaderboard: arr.slice(0, 3) });
+                
+                // V17: Save FULL list to finalStandings, not just top 3
+                db.ref(`games/${state.gameId}`).update({ status: 'results', finalStandings: arr });
             });
         }, 1500);
     }
@@ -401,7 +417,6 @@
             grid.appendChild(btn);
         });
 
-        // Sync avatars
         db.ref(`games/${state.gameId}/players`).on('value', snap => {
             document.querySelectorAll('.avatar-btn').forEach(b => {
                 if(!b.classList.contains('selected')) b.classList.remove('taken');
@@ -425,7 +440,7 @@
         if (btn.classList.contains('taken')) return; 
 
         document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected'); // V16: Triggers Gold Glow CSS
+        btn.classList.add('selected');
         state.avatar = av;
         document.getElementById('btn-join-confirm').disabled = false;
     }
@@ -434,7 +449,7 @@
         if(!db) return alert("Waiting for connection...");
         const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
         playerRef.set({ name: state.playerName, score: 0, avatar: state.avatar });
-        db.ref(`games/${state.gameId}/players`).off(); // Stop syncing avatars
+        db.ref(`games/${state.gameId}/players`).off(); 
 
         showView('view-student-wait');
         document.getElementById('my-final-avatar').innerText = state.avatar;
@@ -460,7 +475,10 @@
                 document.getElementById('game-freeze-overlay').classList.remove('hidden');
             } 
             else if (game.status === 'results') {
-                showPodium(game.leaderboard);
+                // V17: Trigger Sequence
+                showPodiumSequence(game.finalStandings);
+                // Stop listening to avoid repeated triggers if data changes slightly
+                db.ref(`games/${state.gameId}`).off(); 
             }
         });
     }
@@ -483,12 +501,15 @@
     }
 
     // ======================================
-    // PODIUM (V16 FIXED)
+    // PODIUM & RANKING SEQUENCE (V17)
     // ======================================
-    function showPodium(leaders) {
+    function showPodiumSequence(fullList) {
         state.active = false;
         if(localTimerInterval) clearInterval(localTimerInterval);
+        
+        // 1. Show Podium
         showView('view-podium');
+        renderPodium(fullList);
         
         // Confetti
         const end = Date.now() + 3000;
@@ -498,31 +519,73 @@
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
 
-        // V16: Robust Podium Logic
-        if(!leaders) leaders = [];
-        
+        // 2. Wait 6 seconds, then show Full List
+        setTimeout(() => {
+            showFullRankingList(fullList);
+        }, 6000);
+    }
+
+    function renderPodium(list) {
+        if(!list) list = [];
+        // Reset animations
+        ['podium-1','podium-2','podium-3'].forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.remove('podium-enter');
+            el.style.opacity = '0';
+        });
+
         const setP = (rank, p) => {
             const el = document.getElementById(`podium-${rank}`);
-            if(!p) { 
-                // 如果沒有這個名次的玩家，隱藏柱子
-                el.classList.add('podium-hidden'); 
-            } else {
-                // 如果有，顯示並填入資料
-                el.classList.remove('podium-hidden'); 
-                el.classList.add('podium-enter');
+            if(p) { 
                 document.getElementById(`p${rank}-name`).innerText = p.name;
                 document.getElementById(`p${rank}-avatar`).innerText = p.avatar;
                 document.getElementById(`p${rank}-score`).innerText = p.score;
+                // Use setTimeout to stagger animations slightly
+                setTimeout(() => {
+                    el.classList.add('podium-enter');
+                }, rank * 200); // 1st appears last? Or first? Let's just all appear.
             }
         };
 
-        // Rank 1 (Array index 0)
-        setP(1, leaders[0]); 
-        // Rank 2 (Array index 1)
-        setP(2, leaders[1]); 
-        // Rank 3 (Array index 2)
-        setP(3, leaders[2]);
+        // Ensure 2nd place renders if exists
+        if(list[0]) setP(1, list[0]);
+        if(list[1]) setP(2, list[1]);
+        if(list[2]) setP(3, list[2]);
     }
+
+    function showFullRankingList(list) {
+        showView('view-rankings');
+        const tbody = document.getElementById('ranking-list-body');
+        tbody.innerHTML = '';
+        
+        if(!list) return;
+
+        list.forEach((p, idx) => {
+            const rank = idx + 1;
+            let colorClass = "text-white";
+            if(rank === 1) colorClass = "text-yellow-400 font-bold";
+            else if(rank === 2) colorClass = "text-slate-300 font-bold";
+            else if(rank === 3) colorClass = "text-orange-400 font-bold";
+
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors rank-item";
+            tr.style.animationDelay = (idx * 0.05) + "s";
+            tr.innerHTML = `
+                <td class="p-3 ${colorClass}">${rank}</td>
+                <td class="p-3 flex items-center gap-3">
+                    <span class="text-2xl">${p.avatar}</span>
+                    <span class="${p.name === state.playerName ? 'text-cyan-400 font-bold' : 'text-slate-300'}">${p.name}</span>
+                </td>
+                <td class="p-3 text-right font-mono ${colorClass}">${p.score}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.backToMenu = () => {
+        // Clear query params to restart cleanly
+        window.location.href = window.location.origin + window.location.pathname;
+    };
 
     // ======================================
     // GAME & MATH
