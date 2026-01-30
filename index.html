@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Area Master: Online Battle</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        body { background-color: #0f172a; color: white; touch-action: none; user-select: none; }
+        .neon-text { text-shadow: 0 0 10px #0ea5e9; }
+        .btn-primary { @apply bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition active:scale-95 w-full mb-3; }
+        .btn-secondary { @apply bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition active:scale-95 w-full mb-3; }
+        canvas { border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center overflow-hidden font-sans">
+
+    <div id="view-menu" class="text-center space-y-6 p-4 max-w-md w-full hidden">
+        <h1 class="text-5xl font-extrabold italic neon-text mb-2">AREA MASTER</h1>
+        <p class="text-slate-400 text-sm mb-8">v7.0 GitHub/Firebase Edition</p>
+        
+        <div class="space-y-4">
+            <button onclick="startSinglePlayer()" class="btn-primary from-green-500 to-emerald-600 bg-gradient-to-r">
+                👤 單人練習 (Single)
+            </button>
+            <div class="relative py-2">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-600"></div></div>
+                <div class="relative flex justify-center"><span class="bg-[#0f172a] px-2 text-slate-500 text-sm">Or Multiplayer</span></div>
+            </div>
+            <button onclick="setupHost()" class="btn-primary from-blue-500 to-indigo-600 bg-gradient-to-r">
+                📡 建立房間 (Host Game)
+            </button>
+        </div>
+    </div>
+
+    <div id="view-join" class="text-center p-6 max-w-md w-full hidden">
+        <h2 class="text-2xl font-bold mb-6 text-cyan-400">加入對戰</h2>
+        <input type="text" id="player-name" placeholder="輸入你的暱稱" class="w-full p-4 rounded bg-slate-800 border border-slate-600 text-white text-center text-xl mb-4 focus:outline-none focus:border-cyan-500">
+        <button onclick="joinGameAction()" class="btn-primary">🚀 立即加入</button>
+    </div>
+
+    <div id="view-lobby" class="text-center p-4 max-w-md w-full hidden flex-col h-full">
+        <h2 class="text-xl text-slate-400 mb-2">Waiting for players...</h2>
+        
+        <div class="bg-white p-2 rounded-lg mx-auto mb-4 w-48 h-48 flex items-center justify-center">
+            <div id="qrcode"></div>
+        </div>
+        <p class="text-xs text-slate-500 mb-4 break-all" id="share-url"></p>
+
+        <div class="flex-1 bg-slate-800/50 rounded-lg p-4 mb-4 overflow-y-auto w-full border border-slate-700">
+            <h3 class="text-cyan-400 font-bold border-b border-slate-600 pb-2 mb-2">已加入玩家 (<span id="player-count">0</span>)</h3>
+            <ul id="lobby-player-list" class="space-y-2 text-left">
+                </ul>
+        </div>
+
+        <button onclick="hostStartGame()" class="btn-primary bg-gradient-to-r from-pink-500 to-rose-600 text-xl py-4">
+            🔥 開始對戰 (START)
+        </button>
+        <button onclick="location.href=location.pathname" class="text-slate-500 text-sm mt-2">離開房間</button>
+    </div>
+
+    <div id="view-game" class="w-full h-full flex flex-col hidden relative">
+        <div class="flex justify-between items-center p-3 bg-slate-900 border-b border-slate-700 z-10">
+            <div class="font-bold text-xl" id="timer-display">60s</div>
+            <div class="text-cyan-400 font-bold" id="score-display">PTS: 0</div>
+        </div>
+
+        <div class="flex-1 relative bg-slate-800 flex justify-center items-center overflow-hidden" id="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="feedback-msg" class="absolute top-1/4 left-1/2 -translate-x-1/2 text-2xl font-bold opacity-0 transition-opacity pointer-events-none whitespace-nowrap z-20"></div>
+        </div>
+
+        <div class="bg-slate-900 border-t border-slate-700 p-2 h-64 grid grid-cols-2 gap-2 z-10">
+            <div class="bg-slate-800 rounded p-2 flex flex-col justify-center items-center relative border border-slate-700">
+                <div class="text-xs text-slate-500 absolute top-1 left-2">INPUT</div>
+                <div id="input-display" class="text-4xl font-mono font-bold tracking-widest my-2">_</div>
+                <div id="hint-display" class="text-xs text-yellow-500 text-center"></div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-1 h-full">
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('7')">7</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('8')">8</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('9')">9</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('4')">4</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('5')">5</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('6')">6</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('1')">1</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('2')">2</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('3')">3</button>
+                <button class="bg-rose-900/50 text-rose-400 rounded font-bold active:bg-rose-900" onclick="input('DEL')">DEL</button>
+                <button class="bg-slate-700 rounded text-xl font-bold active:bg-slate-600" onclick="input('0')">0</button>
+                <button class="bg-emerald-700 text-emerald-100 rounded font-bold active:bg-emerald-600" onclick="checkAnswer()">OK</button>
+            </div>
+        </div>
+
+        <div id="live-leaderboard" class="absolute top-14 right-2 bg-black/80 p-2 rounded text-xs w-32 hidden pointer-events-none">
+            <div class="text-slate-400 border-b border-white/20 mb-1 pb-1">TOP RANK</div>
+            <div id="lb-list"></div>
+        </div>
+    </div>
+
+    <div id="view-result" class="text-center p-6 max-w-md w-full hidden z-50 bg-[#0f172a] absolute inset-0 flex flex-col items-center justify-center">
+        <h1 class="text-4xl font-bold text-white mb-2">GAME OVER</h1>
+        <div id="result-rank" class="text-6xl font-bold text-yellow-400 mb-4 animate-bounce">#1</div>
+        <div class="text-2xl text-slate-300 mb-8">Score: <span id="result-score">0</span></div>
+        <button onclick="location.href=location.pathname" class="btn-primary">返回首頁</button>
+    </div>
+
+<script>
+    // ==========================================
+    // 1. CONFIGURATION (USER MUST EDIT THIS)
+    // ==========================================
+    const firebaseConfig = {
+        // 🔴 請將此處替換為你的 Firebase Config
+        // 到 Firebase Console -> Project Settings -> General -> Your apps -> SDK setup and configuration
+	  apiKey: "AIzaSyAYnQB2o5cPn42RiNAik7537ihduICJwdQ",
+  	authDomain: "fwftmath.firebaseapp.com",
+  	projectId: "fwftmath",
+  	storageBucket: "fwftmath.firebasestorage.app",
+  	messagingSenderId: "70090299689",
+  	appId: "1:70090299689:web:ae300db1f79a3eda62bf38",
+  	measurementId: "G-PVHYMHY8LK"
+    };
+
+    // ==========================================
+    // 2. INITIALIZATION
+    // ==========================================
+    let app, db;
+    try {
+        app = firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+    } catch(e) {
+        console.error("Firebase Init Error: Did you replace the config?", e);
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameIdFromUrl = urlParams.get('gid');
+    
+    // Game State
+    let state = {
+        role: 'none', // 'single', 'host', 'client'
+        gameId: null,
+        playerId: 'p_' + Math.random().toString(36).substr(2, 9),
+        playerName: 'Player',
+        score: 0,
+        q: null,
+        input: '',
+        active: false,
+        timeLeft: 60
+    };
+
+    // Views
+    const views = ['view-menu', 'view-join', 'view-lobby', 'view-game', 'view-result'];
+    function showView(id) {
+        views.forEach(v => document.getElementById(v).classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+        if(id === 'view-lobby') document.getElementById(id).classList.add('flex');
+        if(id === 'view-game') {
+             document.getElementById(id).classList.remove('hidden');
+             resizeCanvas();
+        }
+    }
+
+    // Entry Point
+    window.onload = () => {
+        if (!gameIdFromUrl) {
+            showView('view-menu'); // Main Menu
+        } else {
+            showView('view-join'); // Join Screen
+        }
+    };
+
+    // ==========================================
+    // 3. MULTIPLAYER LOGIC
+    // ==========================================
+    
+    // --- Host Functions ---
+    function setupHost() {
+        if(!db) { alert("Firebase尚未設定！請編輯HTML檔案填入Config。"); return; }
+        
+        state.role = 'host';
+        state.playerName = "HOST";
+        
+        // Create Game ref
+        const newGameRef = db.ref('games').push();
+        state.gameId = newGameRef.key;
+        
+        // Initial Game Data
+        newGameRef.set({
+            status: 'waiting',
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            hostId: state.playerId
+        });
+
+        // Add Host as a player (ghost player for logic)
+        db.ref(`games/${state.gameId}/players/${state.playerId}`).set({
+            name: "Host (You)",
+            score: 0,
+            isHost: true
+        });
+
+        // Setup Lobby UI
+        showView('view-lobby');
+        
+        // Generate QR Code
+        const joinUrl = `${window.location.origin}${window.location.pathname}?gid=${state.gameId}`;
+        new QRCode(document.getElementById("qrcode"), { text: joinUrl, width: 128, height: 128 });
+        document.getElementById('share-url').innerText = joinUrl;
+
+        // Listen for players
+        db.ref(`games/${state.gameId}/players`).on('value', snapshot => {
+            const list = document.getElementById('lobby-player-list');
+            list.innerHTML = '';
+            let count = 0;
+            snapshot.forEach(child => {
+                const p = child.val();
+                count++;
+                const li = document.createElement('li');
+                li.className = "bg-slate-700 p-2 rounded flex justify-between";
+                li.innerHTML = `<span>${p.name}</span> <span class="text-xs bg-cyan-900 text-cyan-300 px-2 rounded pt-1">${p.score}</span>`;
+                list.appendChild(li);
+            });
+            document.getElementById('player-count').innerText = count;
+        });
+    }
+
+    function hostStartGame() {
+        db.ref(`games/${state.gameId}`).update({ status: 'playing', startTime: Date.now() });
+        // Host also enters game view
+        setupGameEnvironment(true); // true = multiplayer
+        // Host logic loop to update timer/end game
+        startHostLoop();
+    }
+
+    function startHostLoop() {
+        let timer = 60;
+        const interval = setInterval(() => {
+            timer--;
+            db.ref(`games/${state.gameId}`).update({ timer: timer });
+            
+            if(timer <= 0) {
+                clearInterval(interval);
+                db.ref(`games/${state.gameId}`).update({ status: 'ended' });
+            }
+        }, 1000);
+    }
+
+    // --- Client Functions ---
+    function joinGameAction() {
+        if(!db) { alert("Firebase Error"); return; }
+        const nameInput = document.getElementById('player-name').value.trim();
+        if(!nameInput) return alert("請輸入名字");
+        
+        state.role = 'client';
+        state.playerName = nameInput;
+        state.gameId = gameIdFromUrl;
+
+        // Register Player
+        db.ref(`games/${state.gameId}/players/${state.playerId}`).set({
+            name: state.playerName,
+            score: 0
+        });
+
+        // Listen to Game Status
+        db.ref(`games/${state.gameId}`).on('value', snapshot => {
+            const data = snapshot.val();
+            if(!data) return;
+
+            if(data.status === 'playing' && !state.active) {
+                setupGameEnvironment(true); // Start Game
+            } else if(data.status === 'ended') {
+                endGameMultiplayer();
+            }
+            
+            // Sync Timer
+            if(data.timer !== undefined) {
+                document.getElementById('timer-display').innerText = data.timer + 's';
+            }
+        });
+
+        // Wait screen
+        document.getElementById('view-join').innerHTML = `<h2 class="text-2xl animate-pulse text-cyan-400">Waiting for Host...</h2>`;
+    }
+
+    // --- Shared Multiplayer Logic ---
+    function setupGameEnvironment(isMultiplayer) {
+        showView('view-game');
+        state.active = true;
+        state.score = 0;
+        generateQuestion();
+        
+        if(isMultiplayer) {
+            document.getElementById('live-leaderboard').classList.remove('hidden');
+            // Listen to all scores for leaderboard
+            db.ref(`games/${state.gameId}/players`).on('value', snapshot => {
+                const players = [];
+                snapshot.forEach(c => players.push(c.val()));
+                players.sort((a,b) => b.score - a.score);
+                
+                const html = players.slice(0, 5).map((p,i) => 
+                    `<div class="flex justify-between ${p.name===state.playerName?'text-cyan-300':''}"><span>#${i+1} ${p.name.substr(0,8)}</span><span>${p.score}</span></div>`
+                ).join('');
+                document.getElementById('lb-list').innerHTML = html;
+            });
+        } else {
+            // Single player timer logic
+            state.timeLeft = 60;
+            const t = setInterval(() => {
+                state.timeLeft--;
+                document.getElementById('timer-display').innerText = state.timeLeft + 's';
+                if(state.timeLeft <= 0) {
+                    clearInterval(t);
+                    endGameSingle();
+                }
+            }, 1000);
+        }
+    }
+
+    function updateScoreMultiplayer() {
+        if(state.role !== 'none' && state.gameId) {
+            db.ref(`games/${state.gameId}/players/${state.playerId}`).update({
+                score: state.score
+            });
+        }
+    }
+
+    function endGameMultiplayer() {
+        state.active = false;
+        showView('view-result');
+        document.getElementById('result-score').innerText = state.score;
+        
+        // Fetch final rank
+        db.ref(`games/${state.gameId}/players`).once('value').then(snapshot => {
+            const players = [];
+            snapshot.forEach(c => players.push(c.val()));
+            players.sort((a,b) => b.score - a.score);
+            const myRank = players.findIndex(p => p.name === state.playerName) + 1;
+            document.getElementById('result-rank').innerText = "#" + myRank;
+        });
+    }
+
+    // ==========================================
+    // 4. SINGLE PLAYER LOGIC
+    // ==========================================
+    function startSinglePlayer() {
+        state.role = 'single';
+        setupGameEnvironment(false);
+    }
+    
+    function endGameSingle() {
+        state.active = false;
+        showView('view-result');
+        document.getElementById('result-score').innerText = state.score;
+        document.getElementById('result-rank').innerText = "練習結束";
+    }
+
+    // ==========================================
+    // 5. GAME ENGINE (Core Math Logic)
+    // ==========================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    function resizeCanvas() {
+        const parent = document.getElementById('canvas-container');
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+        if(state.q) drawQuestion();
+    }
+    window.onresize = resizeCanvas;
+
+    function generateQuestion() {
+        if(!state.active) return;
+        const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        
+        // Simple Area logic: Rectangle or Triangle
+        const type = Math.random() > 0.5 ? 'rect' : 'tri';
+        let q = { type, ans: 0 };
+        
+        if (type === 'rect') {
+            q.w = r(4, 9); q.h = r(3, 8);
+            q.ans = q.w * q.h;
+            state.hint = "Area = Width × Height";
+        } else {
+            q.b = r(4, 10); if(q.b%2!==0) q.b++; // even base
+            q.h = r(4, 8);
+            q.ans = (q.b * q.h) / 2;
+            state.hint = "Area = Base × Height ÷ 2";
+        }
+        
+        state.q = q;
+        state.input = "";
+        document.getElementById('input-display').innerText = "_";
+        document.getElementById('hint-display').innerText = state.hint;
+        drawQuestion();
+    }
+
+    function drawQuestion() {
+        const w = canvas.width, h = canvas.height;
+        const cx = w/2, cy = h/2;
+        const s = Math.min(w,h)/18; // scale
+        
+        ctx.clearRect(0, 0, w, h);
+        
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth=1; ctx.beginPath();
+        for(let i=0; i<w/2; i+=s) { ctx.moveTo(cx+i,0); ctx.lineTo(cx+i,h); ctx.moveTo(cx-i,0); ctx.lineTo(cx-i,h); }
+        for(let i=0; i<h/2; i+=s) { ctx.moveTo(0,cy+i); ctx.lineTo(w,cy+i); ctx.moveTo(0,cy-i); ctx.lineTo(w,cy-i); }
+        ctx.stroke();
+
+        ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(56, 189, 248, 0.1)';
+        ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        
+        const q = state.q;
+        if(q.type === 'rect') {
+            const hw = q.w/2 * s, hh = q.h/2 * s;
+            ctx.beginPath(); ctx.rect(cx - hw, cy - hh, q.w*s, q.h*s);
+            ctx.fill(); ctx.stroke();
+            
+            // Labels
+            drawLabel(q.w, cx, cy - hh - 15, '#fbbf24'); // Top
+            drawLabel(q.h, cx + hw + 15, cy, '#34d399'); // Right
+        } else {
+            const hb = q.b/2 * s, hh = q.h/2 * s;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - hh);
+            ctx.lineTo(cx - hb, cy + hh);
+            ctx.lineTo(cx + hb, cy + hh);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            
+            // Labels
+            drawLabel(q.b, cx, cy + hh + 20, '#fbbf24');
+            
+            // Height line
+            ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(cx, cy-hh); ctx.lineTo(cx, cy+hh); ctx.stroke(); ctx.setLineDash([]);
+            drawLabel(q.h, cx + 5, cy, '#34d399');
+        }
+    }
+
+    function drawLabel(text, x, y, color) {
+        ctx.fillStyle = "#1e293b"; ctx.fillRect(x-10, y-10, 20, 20);
+        ctx.fillStyle = color; ctx.fillText(text, x, y);
+    }
+
+    // ==========================================
+    // 6. INPUT HANDLING
+    // ==========================================
+    window.input = (key) => {
+        if(!state.active) return;
+        if(key === 'DEL') {
+            state.input = state.input.slice(0, -1);
+        } else if(state.input.length < 4) {
+            state.input += key;
+        }
+        document.getElementById('input-display').innerText = state.input || "_";
+    };
+
+    window.checkAnswer = () => {
+        if(!state.active || !state.input) return;
+        const val = parseInt(state.input);
+        const feedback = document.getElementById('feedback-msg');
+        
+        if(val === state.q.ans) {
+            // Correct
+            state.score += 100;
+            document.getElementById('score-display').innerText = "PTS: " + state.score;
+            feedback.innerText = "CORRECT!"; feedback.className = "absolute top-1/4 left-1/2 -translate-x-1/2 text-2xl font-bold text-green-400 animate-bounce z-20";
+            feedback.style.opacity = 1;
+            
+            if(state.role !== 'single') updateScoreMultiplayer();
+            
+            setTimeout(() => {
+                feedback.style.opacity = 0;
+                generateQuestion();
+            }, 500);
+        } else {
+            // Wrong
+            feedback.innerText = "WRONG!"; feedback.className = "absolute top-1/4 left-1/2 -translate-x-1/2 text-2xl font-bold text-red-500 shake z-20";
+            feedback.style.opacity = 1;
+            state.input = "";
+            document.getElementById('input-display').innerText = "_";
+            setTimeout(() => feedback.style.opacity = 0, 1000);
+        }
+    };
+
+</script>
+</body>
+</html>
