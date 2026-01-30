@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V18: Fixed Ranking</title>
+    <title>Math Arena V19: Smart Questions</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -24,6 +24,7 @@
         
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
         
+        /* Avatar & Selection */
         .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-slate-700 transition-all cursor-pointer grayscale opacity-70 bg-slate-800; }
         .avatar-btn.selected { 
             @apply bg-slate-800 grayscale-0 opacity-100 scale-110 z-10;
@@ -97,7 +98,7 @@
 
     <div id="view-avatar-select" class="text-center p-6 max-w-md w-full hidden z-50 flex-col">
         <h2 class="text-xl font-bold mb-4 text-cyan-400">SELECT AVATAR</h2>
-        <p class="text-xs text-slate-500 mb-4">Gray icons are taken by others</p>
+        <p class="text-xs text-slate-500 mb-4">Gray icons are taken</p>
         <div class="grid grid-cols-4 gap-4 mb-8" id="avatar-grid"></div>
         <button onclick="confirmJoin()" class="btn-primary" id="btn-join-confirm" disabled>READY</button>
         <button onclick="showView('view-join')" class="text-slate-500 underline mt-2">BACK</button>
@@ -151,31 +152,22 @@
     <div id="view-podium" class="text-center w-full hidden z-[100] bg-slate-950 absolute inset-0 flex flex-col items-center justify-center">
         <h1 class="text-5xl font-display text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-12 neon-gold z-10">CHAMPIONS</h1>
         <div class="flex items-end justify-center w-full max-w-4xl px-2 z-10" id="podium-container">
-            
             <div id="podium-2" class="flex flex-col items-center mx-1 md:mx-4 opacity-0" style="visibility: hidden;">
                 <div class="text-4xl mb-2" id="p2-avatar"></div>
                 <div class="text-white font-bold text-sm truncate w-20 md:w-32" id="p2-name"></div>
-                <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg">
-                    <span class="text-3xl font-black text-slate-500">2</span>
-                </div>
+                <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg"><span class="text-3xl font-black text-slate-500">2</span></div>
                 <div class="mt-2 text-cyan-400 font-bold" id="p2-score"></div>
             </div>
-
             <div id="podium-1" class="flex flex-col items-center mx-1 md:mx-4 opacity-0 z-20" style="visibility: hidden;">
                 <div class="text-7xl mb-2 animate-bounce" id="p1-avatar"></div>
                 <div class="text-yellow-400 font-bold text-xl neon-gold truncate w-24 md:w-40" id="p1-name"></div>
-                <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.4)]">
-                    <span class="text-5xl font-black text-yellow-900/50">1</span>
-                </div>
+                <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.4)]"><span class="text-5xl font-black text-yellow-900/50">1</span></div>
                 <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score"></div>
             </div>
-
             <div id="podium-3" class="flex flex-col items-center mx-1 md:mx-4 opacity-0" style="visibility: hidden;">
                 <div class="text-4xl mb-2" id="p3-avatar"></div>
                 <div class="text-white font-bold text-sm truncate w-20 md:w-32" id="p3-name"></div>
-                <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg">
-                    <span class="text-3xl font-black text-orange-900/50">3</span>
-                </div>
+                <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg"><span class="text-3xl font-black text-orange-900/50">3</span></div>
                 <div class="mt-2 text-cyan-400 font-bold" id="p3-score"></div>
             </div>
         </div>
@@ -186,14 +178,9 @@
         <div class="flex-1 overflow-y-auto bg-slate-900/50 rounded-xl border border-slate-800 p-4 max-w-2xl mx-auto w-full">
             <table class="w-full text-left border-collapse">
                 <thead class="text-slate-500 border-b border-slate-700">
-                    <tr>
-                        <th class="p-2">#</th>
-                        <th class="p-2">PLAYER</th>
-                        <th class="p-2 text-right">SCORE</th>
-                    </tr>
+                    <tr><th class="p-2">#</th><th class="p-2">PLAYER</th><th class="p-2 text-right">SCORE</th></tr>
                 </thead>
-                <tbody id="ranking-list-body">
-                    </tbody>
+                <tbody id="ranking-list-body"></tbody>
             </table>
         </div>
         <div id="host-restart-area" class="mt-4 text-center hidden">
@@ -238,7 +225,8 @@
         score: 0, active: false,
         settings: { mode: 'time', target: 60 },
         q: null, input: '', endTime: 0,
-        hostLoop: null
+        hostLoop: null,
+        lastQType: null // To prevent repeated question types
     };
     let localTimerInterval = null;
 
@@ -359,20 +347,15 @@
         document.getElementById('host-status-msg').style.opacity = 1;
         if(localTimerInterval) clearInterval(localTimerInterval);
 
-        // V18 FIX: Ensure we gather ALL players properly
         setTimeout(() => {
             db.ref(`games/${state.gameId}/players`).once('value', s => {
                 const arr = [];
                 s.forEach(c => {
                     const p = c.val();
-                    // Ensure valid score number
                     p.score = parseInt(p.score) || 0;
                     arr.push(p);
                 });
-                // Sort Descending
                 arr.sort((a,b) => b.score - a.score);
-                
-                // Write FULL list
                 db.ref(`games/${state.gameId}`).update({ status: 'results', finalStandings: arr });
             });
         }, 1500);
@@ -477,7 +460,6 @@
                 document.getElementById('game-freeze-overlay').classList.remove('hidden');
             } 
             else if (game.status === 'results') {
-                // V18: Ensure we utilize the full list
                 showPodiumSequence(game.finalStandings);
                 db.ref(`games/${state.gameId}`).off(); 
             }
@@ -501,18 +483,13 @@
         }
     }
 
-    // ======================================
-    // PODIUM & RANKING SEQUENCE (V18 FIXED)
-    // ======================================
     function showPodiumSequence(fullList) {
         state.active = false;
         if(localTimerInterval) clearInterval(localTimerInterval);
         
-        // 1. Show Podium
         showView('view-podium');
         renderPodium(fullList);
         
-        // Confetti
         const end = Date.now() + 3000;
         (function frame() {
             confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 } });
@@ -520,7 +497,6 @@
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
 
-        // 2. Wait 6 seconds, then show Full List
         setTimeout(() => {
             showFullRankingList(fullList);
         }, 6000);
@@ -528,16 +504,14 @@
 
     function renderPodium(list) {
         if(!list) list = [];
-        
         const ids = ['podium-1', 'podium-2', 'podium-3'];
         ids.forEach(id => {
             const el = document.getElementById(id);
             el.classList.remove('podium-enter');
             el.style.opacity = '0';
-            el.style.visibility = 'hidden'; // Reset to hidden
+            el.style.visibility = 'hidden';
         });
 
-        // Helper to set data and show
         const showRank = (rankDivId, pData, delayIdx) => {
             if(!pData) return;
             const el = document.getElementById(rankDivId);
@@ -547,31 +521,21 @@
             document.getElementById(`p${rankNum}-avatar`).innerText = pData.avatar;
             document.getElementById(`p${rankNum}-score`).innerText = pData.score;
             
-            el.style.visibility = 'visible'; // Make visible layout-wise
-            setTimeout(() => {
-                el.classList.add('podium-enter'); // Fade in
-            }, delayIdx * 200);
+            el.style.visibility = 'visible';
+            setTimeout(() => { el.classList.add('podium-enter'); }, delayIdx * 200);
         };
 
-        // Rank 1 (Index 0)
         if(list[0]) showRank('podium-1', list[0], 0);
-        // Rank 2 (Index 1)
         if(list[1]) showRank('podium-2', list[1], 1);
-        // Rank 3 (Index 2)
         if(list[2]) showRank('podium-3', list[2], 2);
     }
 
     function showFullRankingList(list) {
         showView('view-rankings');
-        
-        // Host only: Show restart button
-        if(state.role === 'host') {
-            document.getElementById('host-restart-area').classList.remove('hidden');
-        }
+        if(state.role === 'host') document.getElementById('host-restart-area').classList.remove('hidden');
 
         const tbody = document.getElementById('ranking-list-body');
         tbody.innerHTML = '';
-        
         if(!list) return;
 
         list.forEach((p, idx) => {
@@ -584,24 +548,15 @@
             const tr = document.createElement('tr');
             tr.className = "border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors rank-item";
             tr.style.animationDelay = (idx * 0.05) + "s";
-            tr.innerHTML = `
-                <td class="p-3 ${colorClass}">${rank}</td>
-                <td class="p-3 flex items-center gap-3">
-                    <span class="text-2xl">${p.avatar}</span>
-                    <span class="${p.name === state.playerName ? 'text-cyan-400 font-bold' : 'text-slate-300'}">${p.name}</span>
-                </td>
-                <td class="p-3 text-right font-mono ${colorClass}">${p.score}</td>
-            `;
+            tr.innerHTML = `<td class="p-3 ${colorClass}">${rank}</td><td class="p-3 flex items-center gap-3"><span class="text-2xl">${p.avatar}</span><span class="${p.name === state.playerName ? 'text-cyan-400 font-bold' : 'text-slate-300'}">${p.name}</span></td><td class="p-3 text-right font-mono ${colorClass}">${p.score}</td>`;
             tbody.appendChild(tr);
         });
     }
 
-    window.backToMenu = () => {
-        window.location.href = window.location.origin + window.location.pathname;
-    };
+    window.backToMenu = () => { window.location.href = window.location.origin + window.location.pathname; };
 
     // ======================================
-    // GAME & MATH
+    // V19 GAME & MATH UPGRADE
     // ======================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -615,17 +570,46 @@
 
     function generateQuestion() {
         if(!state.active) return;
+        
         const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-        let type = 'rect';
-        if(state.score > 300) type = Math.random()>0.5 ? 'tri' : 'rect';
+        
+        // Define Types
+        const types = ['rect_area', 'tri_area', 'para_area', 'find_h'];
+        let type;
+
+        // V19 Logic: Force different type from last time
+        do {
+            type = types[Math.floor(Math.random() * types.length)];
+        } while (type === state.lastQType && types.length > 1);
+        
+        state.lastQType = type;
+        
         let q = { type, ans: 0 };
-        if (type === 'rect') {
-            q.w = r(5, 12); q.h = r(4, 9); q.ans = q.w * q.h;
+
+        if (type === 'rect_area') {
+            q.w = r(5, 12); q.h = r(4, 9); 
+            q.ans = q.w * q.h;
             state.hint = "Area = W × H";
-        } else {
-            q.b = r(6, 14); if(q.b%2!==0)q.b++; q.h = r(4, 10); q.ans = (q.b*q.h)/2;
+        } 
+        else if (type === 'tri_area') {
+            q.b = r(6, 14); if(q.b%2!==0)q.b++; // even base for integer result
+            q.h = r(4, 10); 
+            q.ans = (q.b * q.h) / 2;
             state.hint = "Area = B × H ÷ 2";
         }
+        else if (type === 'para_area') {
+            q.b = r(5, 12); q.h = r(4, 10);
+            q.ans = q.b * q.h;
+            state.hint = "Area = B × H";
+        }
+        else if (type === 'find_h') {
+            // Give Area and Width, find Height
+            q.ans = r(4, 12); // This is H (the answer)
+            q.w = r(5, 10);
+            q.area = q.w * q.ans;
+            state.hint = "H = Area ÷ W";
+        }
+
         state.q = q; state.input = "";
         document.getElementById('input-display').innerText = "_";
         drawQuestion();
@@ -633,23 +617,71 @@
 
     function drawQuestion() {
         const w = canvas.width, h = canvas.height;
-        const cx = w/2, cy = h/2, s = Math.min(w,h)/18;
+        const cx = w/2, cy = h/2, s = Math.min(w,h)/20;
         ctx.clearRect(0,0,w,h);
         ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(34,211,238,0.1)';
         ctx.font = "bold 20px Roboto Mono"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        if(state.q.type === 'rect') {
+
+        const type = state.q.type;
+
+        if(type === 'rect_area') {
             const hw=state.q.w/2*s, hh=state.q.h/2*s;
             ctx.beginPath(); ctx.rect(cx-hw, cy-hh, state.q.w*s, state.q.h*s); ctx.fill(); ctx.stroke();
-            label(state.q.w, cx, cy-hh-20, '#fbbf24'); label(state.q.h, cx+hw+20, cy, '#4ade80');
-        } else {
+            label(state.q.w, cx, cy-hh-20, '#fbbf24'); // Top
+            label(state.q.h, cx+hw+20, cy, '#4ade80'); // Right
+        } 
+        else if(type === 'tri_area') {
             const hb=state.q.b/2*s, hh=state.q.h/2*s;
             ctx.beginPath(); ctx.moveTo(cx, cy-hh); ctx.lineTo(cx-hb, cy+hh); ctx.lineTo(cx+hb, cy+hh); ctx.closePath(); ctx.fill(); ctx.stroke();
-            label(state.q.b, cx, cy+hh+20, '#fbbf24');
+            label(state.q.b, cx, cy+hh+20, '#fbbf24'); // Bottom
+            // Height line
             ctx.beginPath(); ctx.setLineDash([4,4]); ctx.moveTo(cx, cy-hh); ctx.lineTo(cx, cy+hh); ctx.stroke(); ctx.setLineDash([]);
             label(state.q.h, cx+10, cy, '#4ade80');
         }
+        else if (type === 'para_area') {
+            // Parallelogram
+            const hb = state.q.b/2*s, hh = state.q.h/2*s;
+            const slant = 30; // pixel offset
+            ctx.beginPath();
+            ctx.moveTo(cx - hb + slant, cy - hh);
+            ctx.lineTo(cx + hb + slant, cy - hh);
+            ctx.lineTo(cx + hb - slant, cy + hh);
+            ctx.lineTo(cx - hb - slant, cy + hh);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            
+            label(state.q.b, cx, cy+hh+20, '#fbbf24'); // Base
+            // Height Line
+            ctx.beginPath(); ctx.setLineDash([4,4]); 
+            ctx.moveTo(cx - hb - slant, cy + hh); 
+            ctx.lineTo(cx - hb - slant, cy - hh); 
+            ctx.stroke(); ctx.setLineDash([]);
+            label(state.q.h, cx - hb - slant - 20, cy, '#4ade80');
+        }
+        else if (type === 'find_h') {
+            // Draw Rect but put Area inside and ? on side
+            const W = state.q.w;
+            const H = state.q.ans; // Hidden
+            const hw=W/2*s, hh=H/2*s;
+            
+            ctx.beginPath(); ctx.rect(cx-hw, cy-hh, W*s, H*s); ctx.fill(); ctx.stroke();
+            
+            // Text inside
+            ctx.fillStyle = '#fff'; ctx.font = "bold 24px Roboto Mono";
+            ctx.fillText(`Area=${state.q.area}`, cx, cy);
+            
+            label(W, cx, cy+hh+20, '#fbbf24'); // Width
+            label("?", cx+hw+20, cy, '#ef4444'); // Missing Side
+        }
     }
-    function label(txt, x, y, col) { ctx.fillStyle = '#0f172a'; ctx.fillRect(x-12,y-12,24,24); ctx.fillStyle=col; ctx.fillText(txt,x,y); }
+    
+    function label(txt, x, y, col) { 
+        ctx.fillStyle = '#0f172a'; 
+        ctx.fillRect(x-15,y-15,30,30); 
+        ctx.fillStyle = col; 
+        ctx.font = "bold 20px Roboto Mono";
+        ctx.fillText(txt,x,y); 
+    }
 
     window.input = (k) => {
         if(!state.active) return;
