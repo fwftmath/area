@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V19: Smart Questions</title>
+    <title>Math Arena V20: Composite & Logic</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -23,8 +23,8 @@
         .progress-bar { transition: width 0.3s linear; }
         
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
-        
-        /* Avatar & Selection */
+        .btn-disabled { @apply bg-slate-700 text-slate-500 cursor-not-allowed shadow-none transform-none opacity-50; }
+
         .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-slate-700 transition-all cursor-pointer grayscale opacity-70 bg-slate-800; }
         .avatar-btn.selected { 
             @apply bg-slate-800 grayscale-0 opacity-100 scale-110 z-10;
@@ -32,14 +32,10 @@
             box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.6); 
         }
         .avatar-btn.taken { @apply opacity-20 cursor-not-allowed border-red-900 bg-slate-900 scale-90 grayscale; }
-
         .kick-btn { @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors; }
 
-        /* Podium Animation */
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .podium-enter { animation: podium-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        /* Rank List Animation */
         @keyframes slide-in { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .rank-item { animation: slide-in 0.4s ease-out forwards; opacity: 0; }
     </style>
@@ -73,7 +69,7 @@
                     <input type="range" id="setting-slider" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer accent-cyan-500">
                     <div class="text-right text-cyan-400 text-2xl font-bold mt-2" id="setting-value">60 SEC</div>
                 </div>
-                <button onclick="hostStartGame()" class="btn-primary mt-auto bg-gradient-to-r from-green-500 to-emerald-600 text-2xl py-4">🚀 START</button>
+                <button id="btn-host-start" onclick="hostStartGame()" class="btn-primary mt-auto bg-gradient-to-r from-green-500 to-emerald-600 text-2xl py-4" disabled>⏳ WAIT FOR PLAYERS (0/2)</button>
             </div>
         </div>
     </div>
@@ -226,7 +222,7 @@
         settings: { mode: 'time', target: 60 },
         q: null, input: '', endTime: 0,
         hostLoop: null,
-        lastQType: null // To prevent repeated question types
+        lastQType: null
     };
     let localTimerInterval = null;
 
@@ -269,6 +265,18 @@
                 grid.innerHTML += `<div class="bg-slate-800 px-3 py-2 rounded-lg border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]"><span class="text-xl">${p.avatar}</span><span class="font-bold text-white">${p.name}</span><button onclick="kickPlayer('${c.key}')" class="kick-btn">❌</button></div>`;
             });
             document.getElementById('join-count-display').innerText = `${count} PLAYERS`;
+
+            // V20: Min 2 players to start
+            const startBtn = document.getElementById('btn-host-start');
+            if(count < 2) {
+                startBtn.disabled = true;
+                startBtn.innerHTML = `⏳ WAIT FOR PLAYERS (${count}/2)`;
+                startBtn.className = "btn-primary mt-auto bg-slate-700 text-slate-500 cursor-not-allowed shadow-none transform-none opacity-50";
+            } else {
+                startBtn.disabled = false;
+                startBtn.innerHTML = "🚀 START GAME";
+                startBtn.className = "btn-primary mt-auto bg-gradient-to-r from-green-500 to-emerald-600 text-2xl py-4";
+            }
         });
     }
 
@@ -295,6 +303,10 @@
     }
 
     function hostStartGame() {
+        // Double check min players just in case
+        const count = parseInt(document.getElementById('join-count-display').innerText);
+        if(count < 2) return alert("Need at least 2 players!");
+
         const updateData = { status: 'playing', startTime: Date.now() };
         if(state.settings.mode === 'time') {
             state.endTime = Date.now() + (state.settings.target * 1000);
@@ -556,7 +568,7 @@
     window.backToMenu = () => { window.location.href = window.location.origin + window.location.pathname; };
 
     // ======================================
-    // V19 GAME & MATH UPGRADE
+    // V20 GAME & MATH ENGINE
     // ======================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -573,11 +585,14 @@
         
         const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
         
-        // Define Types
-        const types = ['rect_area', 'tri_area', 'para_area', 'find_h'];
-        let type;
+        let types = ['rect_area', 'tri_area', 'para_area', 'find_h', 'trap_area'];
+        
+        // V20 Logic: Add Composite Shapes only if score is high (e.g., > 500)
+        if(state.score >= 500) {
+            types.push('composite');
+        }
 
-        // V19 Logic: Force different type from last time
+        let type;
         do {
             type = types[Math.floor(Math.random() * types.length)];
         } while (type === state.lastQType && types.length > 1);
@@ -587,12 +602,11 @@
         let q = { type, ans: 0 };
 
         if (type === 'rect_area') {
-            q.w = r(5, 12); q.h = r(4, 9); 
-            q.ans = q.w * q.h;
+            q.w = r(5, 12); q.h = r(4, 9); q.ans = q.w * q.h;
             state.hint = "Area = W × H";
         } 
         else if (type === 'tri_area') {
-            q.b = r(6, 14); if(q.b%2!==0)q.b++; // even base for integer result
+            q.b = r(6, 14); if(q.b%2!==0)q.b++; 
             q.h = r(4, 10); 
             q.ans = (q.b * q.h) / 2;
             state.hint = "Area = B × H ÷ 2";
@@ -603,11 +617,34 @@
             state.hint = "Area = B × H";
         }
         else if (type === 'find_h') {
-            // Give Area and Width, find Height
-            q.ans = r(4, 12); // This is H (the answer)
+            q.ans = r(4, 12); // H
             q.w = r(5, 10);
             q.area = q.w * q.ans;
             state.hint = "H = Area ÷ W";
+        }
+        // V20: Trapezoid
+        else if (type === 'trap_area') {
+            q.t = r(4, 8); // Top
+            q.b = q.t + r(2, 6); // Bottom (wider)
+            q.h = r(4, 8);
+            // Ensure integer result: (t+b)*h must be even
+            if (((q.t + q.b) * q.h) % 2 !== 0) q.h++; 
+            q.ans = ((q.t + q.b) * q.h) / 2;
+            state.hint = "Area = (Top + Btm) × H ÷ 2";
+        }
+        // V20: Composite (L-shape)
+        else if (type === 'composite') {
+            // Visualize as a big rectangle minus a small corner
+            const fullW = r(8, 12);
+            const fullH = r(8, 12);
+            const cutW = r(3, 5);
+            const cutH = r(3, 5);
+            
+            q.w = fullW; q.h = fullH;
+            q.cw = cutW; q.ch = cutH;
+            // Draw logic will handle dimensions
+            q.ans = (fullW * fullH) - (cutW * cutH);
+            state.hint = "Split into rectangles";
         }
 
         state.q = q; state.input = "";
@@ -627,51 +664,86 @@
         if(type === 'rect_area') {
             const hw=state.q.w/2*s, hh=state.q.h/2*s;
             ctx.beginPath(); ctx.rect(cx-hw, cy-hh, state.q.w*s, state.q.h*s); ctx.fill(); ctx.stroke();
-            label(state.q.w, cx, cy-hh-20, '#fbbf24'); // Top
-            label(state.q.h, cx+hw+20, cy, '#4ade80'); // Right
+            label(state.q.w, cx, cy-hh-20, '#fbbf24'); 
+            label(state.q.h, cx+hw+20, cy, '#4ade80'); 
         } 
         else if(type === 'tri_area') {
             const hb=state.q.b/2*s, hh=state.q.h/2*s;
             ctx.beginPath(); ctx.moveTo(cx, cy-hh); ctx.lineTo(cx-hb, cy+hh); ctx.lineTo(cx+hb, cy+hh); ctx.closePath(); ctx.fill(); ctx.stroke();
-            label(state.q.b, cx, cy+hh+20, '#fbbf24'); // Bottom
-            // Height line
+            label(state.q.b, cx, cy+hh+20, '#fbbf24'); 
             ctx.beginPath(); ctx.setLineDash([4,4]); ctx.moveTo(cx, cy-hh); ctx.lineTo(cx, cy+hh); ctx.stroke(); ctx.setLineDash([]);
             label(state.q.h, cx+10, cy, '#4ade80');
         }
         else if (type === 'para_area') {
-            // Parallelogram
             const hb = state.q.b/2*s, hh = state.q.h/2*s;
-            const slant = 30; // pixel offset
+            const slant = 30; 
             ctx.beginPath();
-            ctx.moveTo(cx - hb + slant, cy - hh);
-            ctx.lineTo(cx + hb + slant, cy - hh);
-            ctx.lineTo(cx + hb - slant, cy + hh);
-            ctx.lineTo(cx - hb - slant, cy + hh);
-            ctx.closePath();
-            ctx.fill(); ctx.stroke();
-            
-            label(state.q.b, cx, cy+hh+20, '#fbbf24'); // Base
-            // Height Line
-            ctx.beginPath(); ctx.setLineDash([4,4]); 
-            ctx.moveTo(cx - hb - slant, cy + hh); 
-            ctx.lineTo(cx - hb - slant, cy - hh); 
-            ctx.stroke(); ctx.setLineDash([]);
+            ctx.moveTo(cx - hb + slant, cy - hh); ctx.lineTo(cx + hb + slant, cy - hh);
+            ctx.lineTo(cx + hb - slant, cy + hh); ctx.lineTo(cx - hb - slant, cy + hh);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            label(state.q.b, cx, cy+hh+20, '#fbbf24'); 
+            ctx.beginPath(); ctx.setLineDash([4,4]); ctx.moveTo(cx - hb - slant, cy + hh); ctx.lineTo(cx - hb - slant, cy - hh); ctx.stroke(); ctx.setLineDash([]);
             label(state.q.h, cx - hb - slant - 20, cy, '#4ade80');
         }
         else if (type === 'find_h') {
-            // Draw Rect but put Area inside and ? on side
-            const W = state.q.w;
-            const H = state.q.ans; // Hidden
+            const W = state.q.w; const H = state.q.ans;
             const hw=W/2*s, hh=H/2*s;
-            
             ctx.beginPath(); ctx.rect(cx-hw, cy-hh, W*s, H*s); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.font = "bold 24px Roboto Mono"; ctx.fillText(`Area=${state.q.area}`, cx, cy);
+            label(W, cx, cy+hh+20, '#fbbf24'); label("?", cx+hw+20, cy, '#ef4444');
+        }
+        // V20: Trapezoid Draw
+        else if (type === 'trap_area') {
+            const top = state.q.t * s;
+            const btm = state.q.b * s;
+            const h = state.q.h * s;
             
-            // Text inside
-            ctx.fillStyle = '#fff'; ctx.font = "bold 24px Roboto Mono";
-            ctx.fillText(`Area=${state.q.area}`, cx, cy);
+            ctx.beginPath();
+            ctx.moveTo(cx - top/2, cy - h/2);
+            ctx.lineTo(cx + top/2, cy - h/2);
+            ctx.lineTo(cx + btm/2, cy + h/2);
+            ctx.lineTo(cx - btm/2, cy + h/2);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            label(state.q.t, cx, cy - h/2 - 20, '#fbbf24'); // Top
+            label(state.q.b, cx, cy + h/2 + 20, '#fbbf24'); // Bottom
             
-            label(W, cx, cy+hh+20, '#fbbf24'); // Width
-            label("?", cx+hw+20, cy, '#ef4444'); // Missing Side
+            // Height Dotted Line
+            ctx.beginPath(); ctx.setLineDash([4,4]);
+            ctx.moveTo(cx - top/2, cy - h/2);
+            ctx.lineTo(cx - top/2, cy + h/2);
+            ctx.stroke(); ctx.setLineDash([]);
+            label(state.q.h, cx - top/2 - 20, cy, '#4ade80');
+        }
+        // V20: Composite Draw (L-Shape)
+        else if (type === 'composite') {
+            // We draw a full rectangle, then "white out" the missing corner or draw polygon
+            const fullW = state.q.w * s;
+            const fullH = state.q.h * s;
+            const cutW = state.q.cw * s;
+            const cutH = state.q.ch * s;
+
+            // Center calculations
+            const startX = cx - fullW/2;
+            const startY = cy - fullH/2;
+
+            // Polygon points for L shape (Cut top-right corner)
+            ctx.beginPath();
+            ctx.moveTo(startX, startY); // Top-Left
+            ctx.lineTo(startX + (fullW - cutW), startY); // Top edge short
+            ctx.lineTo(startX + (fullW - cutW), startY + cutH); // Inner corner vertical
+            ctx.lineTo(startX + fullW, startY + cutH); // Inner corner horizontal
+            ctx.lineTo(startX + fullW, startY + fullH); // Right edge
+            ctx.lineTo(startX, startY + fullH); // Bottom edge
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Labels
+            label(state.q.w, cx, cy + fullH/2 + 20, '#fbbf24'); // Total Width (Bottom)
+            label(state.q.h, startX - 20, cy, '#4ade80'); // Total Height (Left)
+            label(state.q.w - state.q.cw, cx - cutW/2, startY - 20, '#fff'); // Top Seg
+            label(state.q.h - state.q.ch, startX + fullW + 20, cy + cutH/2, '#fff'); // Right Seg
         }
     }
     
