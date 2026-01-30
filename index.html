@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V12: Realtime Fix</title>
+    <title>Math Arena V13: Stable Host</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Roboto+Mono:wght@500;700&display=swap');
@@ -19,30 +20,19 @@
         .neon-text { text-shadow: 0 0 10px #22d3ee; }
         .neon-gold { text-shadow: 0 0 15px #fbbf24; }
         
-        /* 賽道 */
         .lane-item { position: absolute; left: 0; right: 0; transition: top 0.5s ease-in-out; }
         .progress-bar { transition: width 0.3s linear; }
         
-        /* 按鈕通用 */
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
 
-        /* 頭像選擇 (半透明背色) */
-        .avatar-btn { 
-            @apply text-4xl p-2 rounded-xl border-2 border-transparent transition-all cursor-pointer grayscale opacity-60; 
-        }
-        .avatar-btn.selected { 
-            @apply bg-cyan-500/30 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.3)]; 
-        }
+        .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-transparent transition-all cursor-pointer grayscale opacity-60; }
+        .avatar-btn.selected { @apply bg-cyan-500/30 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.3)]; }
 
-        /* 踢人按鈕 */
-        .kick-btn { 
-            @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors;
-        }
+        .kick-btn { @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors; }
 
-        /* 頒獎台動畫 */
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .podium-enter { animation: podium-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        .podium-hidden { display: none !important; } /* 強制隱藏 */
+        .podium-hidden { display: none !important; }
     </style>
 </head>
 <body class="h-screen flex flex-col items-center justify-center bg-[#050510]">
@@ -50,6 +40,9 @@
     <div id="view-menu" class="text-center space-y-6 p-4 max-w-md w-full hidden z-50">
         <h1 class="text-6xl font-display italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2 neon-text">MATH<br>ARENA</h1>
         <p class="text-slate-400 text-xs mb-8 tracking-[0.3em]">MULTIPLAYER BATTLE</p>
+        
+        <div id="db-status" class="text-xs text-red-500 font-bold mb-4">🔴 Connecting to Server...</div>
+        
         <button onclick="setupHost()" class="btn-primary border-l-4 border-cyan-300 text-xl py-6">📡 HOST GAME</button>
     </div>
 
@@ -87,7 +80,6 @@
             <div class="text-sm text-slate-500 font-bold" id="host-target-display">TIME LEFT</div>
         </div>
         <div class="flex-1 relative mx-4 rounded-xl bg-slate-900/30 border border-slate-800 overflow-y-auto" id="lanes-container"></div>
-        
         <div id="host-status-msg" class="absolute bottom-10 left-0 w-full text-center pointer-events-none opacity-0 transition-opacity duration-500">
             <span class="bg-black/80 text-yellow-400 px-6 py-2 rounded-full text-xl font-bold border border-yellow-500">CALCULATING RESULTS...</span>
         </div>
@@ -121,7 +113,6 @@
             <h2 class="text-4xl font-display text-red-500 mb-2 neon-text">TIME UP!</h2>
             <p class="text-white animate-pulse">Waiting for Host...</p>
         </div>
-
         <div class="h-12 bg-slate-950 border-b border-slate-800 flex justify-between items-center px-4">
             <div class="text-cyan-400 font-bold" id="client-score">0 PTS</div>
             <div class="text-slate-400 font-mono" id="client-timer-display">--:--</div>
@@ -184,6 +175,9 @@
     </div>
 
 <script>
+    // ======================================
+    // Firebase 初始化 (含錯誤處理)
+    // ======================================
     const firebaseConfig = {
         apiKey: "AIzaSyAYnQB2o5cPn42RiNAik7537ihduICJwdQ",
         authDomain: "fwftmath.firebaseapp.com",
@@ -192,10 +186,38 @@
         messagingSenderId: "70090299689",
         appId: "1:70090299689:web:ae300db1f79a3eda62bf38"
     };
-    const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼'];
-    let app, db;
-    try { app = firebase.initializeApp(firebaseConfig); db = firebase.database(); } catch(e){}
 
+    let app, db;
+    
+    // 檢查 Firebase 是否成功載入
+    window.addEventListener('load', () => {
+        const statusEl = document.getElementById('db-status');
+        try {
+            if (typeof firebase === 'undefined') throw new Error("Firebase SDK failed to load");
+            app = firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            
+            // 測試連線
+            const connectedRef = db.ref(".info/connected");
+            connectedRef.on("value", (snap) => {
+                if (snap.val() === true) {
+                    if(statusEl) {
+                        statusEl.innerText = "🟢 SERVER CONNECTED";
+                        statusEl.className = "text-xs text-green-400 font-bold mb-4";
+                    }
+                } else {
+                    if(statusEl) statusEl.innerText = "🟠 CONNECTING...";
+                }
+            });
+            
+        } catch (e) {
+            console.error(e);
+            if(statusEl) statusEl.innerText = "❌ SERVER ERROR: " + e.message;
+            alert("Critical Error: Firebase not loaded. Please check internet connection.");
+        }
+    });
+
+    const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼'];
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playTone(f,t,d){if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d);}
 
@@ -209,8 +231,7 @@
         q: null, input: '',
         endTime: 0
     };
-
-    let localTimerInterval = null; // 用於本地倒數動畫
+    let localTimerInterval = null;
 
     const views = ['view-menu','view-host-lobby','view-host-game','view-join','view-avatar-select','view-student-wait','view-game','view-podium'];
     function showView(id) {
@@ -220,42 +241,67 @@
         if(id === 'view-game') resizeCanvas();
     }
 
-    window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
+    window.onload = () => {
+        if(state.gameId) showView('view-join');
+        else showView('view-menu');
+    };
 
-    // ==========================================
-    // HOST 邏輯
-    // ==========================================
+    // ======================================
+    // HOST 邏輯 (修復版)
+    // ======================================
     function setupHost() {
-        state.role = 'host';
-        const ref = db.ref('games').push();
-        state.gameId = ref.key;
-        setMode('time');
-        ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
-        
-        showView('view-host-lobby');
-        new QRCode(document.getElementById("qrcode"), { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
-        
-        db.ref(`games/${state.gameId}/players`).on('value', snap => {
-            const grid = document.getElementById('player-grid');
-            grid.innerHTML = '';
-            let count = 0;
-            snap.forEach(c => {
-                count++;
-                const p = c.val();
-                const div = document.createElement('div');
-                div.className = "bg-slate-800 px-3 py-2 rounded-lg border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]";
-                div.innerHTML = `<span class="text-xl">${p.avatar}</span><span class="font-bold text-white">${p.name}</span><button onclick="kickPlayer('${c.key}')" class="kick-btn">❌</button>`;
-                grid.appendChild(div);
-            });
-            document.getElementById('join-count-display').innerText = `${count} PLAYERS`;
-        });
+        if (!db) {
+            alert("Database not ready yet. Please wait for the green 'CONNECTED' light.");
+            return;
+        }
 
-        const slider = document.getElementById('setting-slider');
-        slider.oninput = (e) => {
-            state.settings.target = parseInt(e.target.value);
-            document.getElementById('setting-value').innerText = state.settings.mode==='score' ? state.settings.target+" PTS" : state.settings.target+" SEC";
-            db.ref(`games/${state.gameId}/settings`).update(state.settings);
-        };
+        try {
+            state.role = 'host';
+            
+            // 1. 先切換畫面，讓使用者有反饋
+            showView('view-host-lobby');
+
+            // 2. 建立遊戲
+            const ref = db.ref('games').push();
+            state.gameId = ref.key;
+            setMode('time');
+            ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
+            
+            // 3. 生成 QR Code
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = ""; // 清空舊的
+            new QRCode(qrContainer, { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
+            
+            // 4. 監聽玩家
+            db.ref(`games/${state.gameId}/players`).on('value', snap => {
+                const grid = document.getElementById('player-grid');
+                grid.innerHTML = '';
+                let count = 0;
+                snap.forEach(c => {
+                    count++;
+                    const p = c.val();
+                    const div = document.createElement('div');
+                    div.className = "bg-slate-800 px-3 py-2 rounded-lg border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]";
+                    div.innerHTML = `<span class="text-xl">${p.avatar}</span><span class="font-bold text-white">${p.name}</span><button onclick="kickPlayer('${c.key}')" class="kick-btn">❌</button>`;
+                    grid.appendChild(div);
+                });
+                document.getElementById('join-count-display').innerText = `${count} PLAYERS`;
+            });
+
+            // 5. 綁定設定滑桿
+            const slider = document.getElementById('setting-slider');
+            slider.oninput = (e) => {
+                state.settings.target = parseInt(e.target.value);
+                document.getElementById('setting-value').innerText = state.settings.mode==='score' ? state.settings.target+" PTS" : state.settings.target+" SEC";
+                // 只有在 gameId 存在時才寫入
+                if(state.gameId) db.ref(`games/${state.gameId}/settings`).update(state.settings);
+            };
+
+        } catch (err) {
+            console.error("Host Setup Error:", err);
+            alert("Error creating game: " + err.message);
+            location.reload(); // 重整頁面
+        }
     }
 
     window.kickPlayer = (pid) => { if(confirm("Kick player?")) db.ref(`games/${state.gameId}/players/${pid}`).remove(); };
@@ -267,7 +313,9 @@
         document.getElementById('btn-mode-time').className = mode==='time' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
         if(mode==='score') { document.getElementById('setting-label').innerText="TARGET SCORE"; slider.min=500; slider.max=5000; slider.step=100; slider.value=1000; } 
         else { document.getElementById('setting-label').innerText="TIME LIMIT"; slider.min=30; slider.max=300; slider.step=10; slider.value=60; }
-        slider.oninput({target:slider});
+        
+        // 觸發更新
+        if(state.gameId) slider.oninput({target:slider});
     }
 
     function hostStartGame() {
@@ -291,7 +339,6 @@
             if(!game) return;
 
             if (game.status === 'playing') {
-                // Host 負責檢查時間到
                 if (game.settings.mode === 'time' && state.role === 'host') {
                     const left = Math.ceil((game.endTime - Date.now())/1000);
                     if(left <= 0) executeGameFinish();
@@ -312,27 +359,18 @@
     }
 
     function executeGameFinish() {
-        // 鎖定狀態
         db.ref(`games/${state.gameId}`).update({ status: 'calculating' });
         document.getElementById('host-status-msg').style.opacity = 1;
-
-        // 停止計時器
         if(localTimerInterval) clearInterval(localTimerInterval);
 
-        // 統一計算排名
         setTimeout(() => {
             db.ref(`games/${state.gameId}/players`).once('value', s => {
                 const arr = [];
                 s.forEach(c => arr.push(c.val()));
-                // 強制數字比較，避免字串排序錯誤
                 arr.sort((a,b) => (parseInt(b.score)||0) - (parseInt(a.score)||0));
-                
-                db.ref(`games/${state.gameId}`).update({ 
-                    status: 'results', 
-                    leaderboard: arr.slice(0, 3) // 取前三
-                });
+                db.ref(`games/${state.gameId}`).update({ status: 'results', leaderboard: arr.slice(0, 3) });
             });
-        }, 1500); // 緩衝時間確保最後分數上傳
+        }, 1500);
     }
 
     function renderLanes(players, target, mode) {
@@ -364,9 +402,9 @@
         });
     }
 
-    // ==========================================
+    // ======================================
     // CLIENT 邏輯
-    // ==========================================
+    // ======================================
     function goToAvatarSelect() {
         const name = document.getElementById('player-name').value.trim();
         if(!name) return alert("Enter Name!");
@@ -389,6 +427,7 @@
     }
 
     function confirmJoin() {
+        if(!db) return alert("Connecting to server...");
         const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
         playerRef.set({ name: state.playerName, score: 0, avatar: state.avatar });
         playerRef.on('value', snap => { if(!snap.exists() && state.role !== 'host') location.reload(); });
@@ -408,7 +447,6 @@
                     state.active = true;
                     showView('view-game');
                     generateQuestion();
-                    // 啟動客戶端本地倒數
                     startLocalTicker(game.endTime, 'client-timer-display');
                 }
             } 
@@ -423,30 +461,19 @@
         });
     }
 
-    // ==========================================
-    // 共用計時器 (解決倒數卡頓核心)
-    // ==========================================
     function startLocalTicker(endTime, elementId) {
         if(localTimerInterval) clearInterval(localTimerInterval);
         const el = document.getElementById(elementId);
-        
-        // 立即執行一次
         updateTime();
-        
-        localTimerInterval = setInterval(updateTime, 200); // 每0.2秒刷新UI，保證流暢
+        localTimerInterval = setInterval(updateTime, 200);
 
         function updateTime() {
-            if(!endTime) {
-                // 競速模式 (計分)
-                el.innerText = "RACE";
-                return;
-            }
+            if(!endTime) { el.innerText = "RACE"; return; }
             const now = Date.now();
             const left = Math.ceil((endTime - now) / 1000);
-            
             if(left <= 0) {
                 el.innerText = "00:00";
-                if(state.role !== 'host') clearInterval(localTimerInterval); // Client 停，Host 繼續跑到切換狀態
+                if(state.role !== 'host') clearInterval(localTimerInterval);
                 return;
             }
             const m = Math.floor(left / 60);
@@ -455,15 +482,13 @@
         }
     }
 
-    // ==========================================
-    // 頒獎台 (修正邏輯)
-    // ==========================================
+    // ======================================
+    // 頒獎台
+    // ======================================
     function showPodium(leaders) {
         state.active = false;
         if(localTimerInterval) clearInterval(localTimerInterval);
         showView('view-podium');
-        
-        // 撒花
         const end = Date.now() + 3000;
         (function frame() {
             confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 } });
@@ -474,28 +499,26 @@
         const setP = (rank, p) => {
             const el = document.getElementById(`podium-${rank}`);
             if(!p) {
-                el.classList.add('podium-hidden'); // 沒有人就隱藏
+                el.classList.add('podium-hidden');
                 el.classList.remove('podium-enter');
                 return;
             }
-            el.classList.remove('podium-hidden'); // 有人就顯示
+            el.classList.remove('podium-hidden');
             el.classList.add('podium-enter');
             document.getElementById(`p${rank}-name`).innerText = p.name;
             document.getElementById(`p${rank}-avatar`).innerText = p.avatar;
             document.getElementById(`p${rank}-score`).innerText = p.score;
         };
 
-        // 安全處理 leaderboard 為空的情況
         if(!leaders) leaders = [];
-
         setP(1, leaders[0]);
         setP(2, leaders[1]);
         setP(3, leaders[2]);
     }
 
-    // ==========================================
-    // 遊戲題目邏輯
-    // ==========================================
+    // ======================================
+    // 遊戲題目與邏輯
+    // ======================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     function resizeCanvas() {
