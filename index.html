@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Area Master: Spectator Mode</title>
+    <title>Area Master: Host Fix</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -18,10 +18,19 @@
         .font-display { font-family: 'Black Ops One', cursive; }
         .neon-text { text-shadow: 0 0 10px #22d3ee; }
         
-        /* 動畫效果 */
-        @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-        .lane-anim { transition: top 0.5s ease-in-out, width 0.3s linear; position: absolute; left: 0; right: 0; }
+        /* 賽道動畫：使用絕對定位進行排序交換 */
+        .lane-item {
+            position: absolute;
+            left: 0;
+            right: 0;
+            transition: top 0.5s ease-in-out; /* 上下移動的動畫 */
+        }
         
+        /* 進度條寬度動畫 */
+        .progress-bar {
+            transition: width 0.3s linear;
+        }
+
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
         .btn-option { @apply border border-slate-600 text-slate-400 py-2 px-4 rounded hover:bg-slate-800 focus:bg-cyan-900 focus:text-cyan-400 focus:border-cyan-500 transition-all; }
         .btn-option.selected { @apply bg-cyan-900 text-cyan-400 border-cyan-500 ring-2 ring-cyan-500/50; }
@@ -32,30 +41,21 @@
     <div id="view-menu" class="text-center space-y-6 p-4 max-w-md w-full hidden z-50">
         <h1 class="text-6xl font-display italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2 neon-text leading-tight">MATH<br>ARENA</h1>
         <p class="text-slate-400 text-xs mb-8 tracking-[0.3em]">MULTIPLAYER CLASSROOM BATTLE</p>
-        
-        <button onclick="setupHost()" class="btn-primary border-l-4 border-cyan-300 text-xl py-6">
-            📡 老師開房 (HOST)
-        </button>
-        
+        <button onclick="setupHost()" class="btn-primary border-l-4 border-cyan-300 text-xl py-6">📡 老師開房 (HOST)</button>
         <div class="relative py-2 opacity-30"><div class="border-t border-slate-600"></div></div>
-        
-        <button onclick="startSinglePlayer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-6 rounded w-full">
-            👤 單人練習
-        </button>
+        <button onclick="startSinglePlayer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-6 rounded w-full">👤 單人練習</button>
     </div>
 
     <div id="view-host-lobby" class="w-full h-full p-6 hidden flex-col max-w-4xl mx-auto">
         <h2 class="text-3xl text-cyan-400 font-display mb-6 border-b border-slate-700 pb-2">GAME SETTINGS</h2>
-        
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
             <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
                 <div class="bg-white p-2 rounded-lg mb-4 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                     <div id="qrcode"></div>
                 </div>
                 <div class="text-2xl font-bold text-white mb-2" id="join-count-display">0 PLAYERS READY</div>
-                <p class="text-slate-500 text-sm">Waiting for connections...</p>
-                <div id="player-grid" class="mt-4 flex flex-wrap justify-center gap-2 w-full">
-                    </div>
+                <p class="text-slate-500 text-sm">Scan to Join</p>
+                <div id="player-grid" class="mt-4 flex flex-wrap justify-center gap-2 w-full max-h-40 overflow-y-auto"></div>
             </div>
 
             <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col">
@@ -66,16 +66,13 @@
                         <button id="btn-mode-time" class="btn-option" onclick="setMode('time')">⏱️ 限時 (Timer)</button>
                     </div>
                 </div>
-
                 <div class="mb-6">
                     <label class="block text-slate-400 text-sm mb-2 font-bold" id="setting-label">TARGET SCORE</label>
                     <input type="range" id="setting-slider" min="500" max="3000" step="100" value="1000" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
                     <div class="text-right text-cyan-400 text-2xl font-bold mt-2" id="setting-value">1000 PTS</div>
                 </div>
-
                 <div class="mt-auto">
-                    <div id="start-warning" class="text-red-500 text-xs text-center mb-2 h-4"></div>
-                    <button onclick="hostStartGame()" class="btn-primary bg-gradient-to-r from-green-500 to-emerald-600 text-2xl py-4 shadow-lg">
+                    <button onclick="hostStartGame()" class="btn-primary bg-gradient-to-r from-green-500 to-emerald-600 text-2xl py-4 shadow-lg hover:scale-105 transition-transform">
                         🚀 START GAME
                     </button>
                 </div>
@@ -84,13 +81,12 @@
     </div>
 
     <div id="view-host-game" class="w-full h-full p-4 hidden flex-col bg-slate-950 relative overflow-hidden">
-        <div class="flex justify-between items-center mb-4 px-4 py-2 bg-slate-900/80 rounded-lg border border-slate-700">
+        <div class="flex justify-between items-center mb-4 px-4 py-2 bg-slate-900/80 rounded-lg border border-slate-700 shrink-0 z-20 relative">
             <div class="font-display text-2xl italic text-slate-300">LIVE RANKING</div>
             <div class="text-4xl font-mono font-bold text-cyan-400 neon-text" id="host-game-timer">00:00</div>
             <div class="text-sm text-slate-500 font-bold" id="host-target-display">TARGET: 1000</div>
         </div>
-
-        <div class="flex-1 relative mx-4 rounded-xl bg-slate-900/50 border border-slate-800 overflow-hidden" id="lanes-container">
+        <div class="flex-1 relative mx-4 rounded-xl bg-slate-900/30 border border-slate-800 overflow-y-auto overflow-x-hidden" id="lanes-container">
             </div>
     </div>
 
@@ -103,7 +99,6 @@
     <div id="view-student-wait" class="text-center p-6 w-full hidden z-50">
         <div class="text-6xl mb-4 animate-bounce">⏳</div>
         <h2 class="text-2xl font-bold text-white mb-2">WAITING FOR TEACHER</h2>
-        <p class="text-slate-400">The game will start soon...</p>
         <div class="mt-8 p-4 bg-slate-900 rounded border border-slate-700">
             <p class="text-sm text-slate-500">Your Avatar</p>
             <div id="my-avatar-display" class="text-4xl mt-2"></div>
@@ -113,21 +108,18 @@
     <div id="view-game" class="w-full h-full flex flex-col hidden relative bg-slate-900">
         <div class="h-12 bg-slate-950 border-b border-slate-800 flex justify-between items-center px-4">
             <div class="text-cyan-400 font-bold" id="client-score">0 PTS</div>
-            <div class="text-slate-400 font-mono" id="client-timer">--:--</div>
+            <div class="text-slate-400 font-mono" id="client-timer">Game On</div>
         </div>
-        
         <div class="flex-1 relative flex justify-center items-center overflow-hidden" id="canvas-container">
             <canvas id="gameCanvas"></canvas>
             <div id="feedback-msg" class="absolute top-1/3 left-1/2 -translate-x-1/2 text-4xl font-black opacity-0 pointer-events-none whitespace-nowrap z-30 transform scale-50 transition-all duration-200" style="-webkit-text-stroke: 1px black;"></div>
         </div>
-
         <div class="bg-slate-900 border-t border-slate-800 p-2 h-[45vh] grid grid-rows-[auto_1fr] gap-2 z-10 shrink-0">
             <div class="bg-slate-800/50 rounded p-2 flex flex-col justify-center items-center relative border border-slate-700">
                 <div class="text-[10px] text-slate-500 absolute top-1 left-2">INPUT</div>
                 <div id="input-display" class="text-3xl font-mono font-bold tracking-[0.5em] text-white my-1 min-h-[40px]">_</div>
                 <div id="hint-display" class="text-xs text-yellow-500/80 text-center font-mono"></div>
             </div>
-            
             <div class="grid grid-cols-3 gap-1 h-full pb-safe">
                 <button class="bg-slate-800 text-cyan-100 rounded text-2xl font-bold active:bg-cyan-700" onclick="input('7')">7</button>
                 <button class="bg-slate-800 text-cyan-100 rounded text-2xl font-bold active:bg-cyan-700" onclick="input('8')">8</button>
@@ -148,11 +140,9 @@
     <div id="view-result" class="text-center p-6 w-full hidden z-[100] bg-slate-950/95 absolute inset-0 flex flex-col items-center justify-center">
         <h1 class="text-5xl font-display text-white mb-2 neon-text">GAME OVER</h1>
         <div id="winner-display" class="text-3xl text-yellow-400 mb-8 font-bold animate-pulse"></div>
-        
         <div class="w-full max-w-md bg-slate-900 rounded-lg p-4 border border-slate-700 mb-8">
             <div id="final-leaderboard" class="space-y-2"></div>
         </div>
-        
         <button onclick="location.href=location.pathname" class="btn-primary max-w-xs">BACK TO MENU</button>
     </div>
 
@@ -179,19 +169,7 @@
     try { app = firebase.initializeApp(firebaseConfig); db = firebase.database(); } 
     catch(e) { console.error("Firebase Error", e); }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    let state = {
-        role: 'none', 
-        gameId: urlParams.get('gid'),
-        playerId: 'p_' + Math.random().toString(36).substr(2, 6),
-        playerName: 'Guest', 
-        avatar: '',
-        score: 0, streak: 0, active: false,
-        settings: { mode: 'score', target: 1000 },
-        q: null, input: ''
-    };
-
-    // 音效
+    // Audio
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
     function playTone(f, t, d) {
@@ -201,7 +179,14 @@
         o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+d); o.stop(audioCtx.currentTime+d);
     }
 
-    // 畫面切換
+    const urlParams = new URLSearchParams(window.location.search);
+    let state = {
+        role: 'none', gameId: urlParams.get('gid'),
+        playerId: 'p_' + Math.random().toString(36).substr(2, 6),
+        playerName: 'Guest', avatar: '', score: 0, streak: 0, active: false,
+        settings: { mode: 'score', target: 1000 }, q: null, input: ''
+    };
+
     const views = ['view-menu', 'view-host-lobby', 'view-host-game', 'view-join', 'view-student-wait', 'view-game', 'view-result'];
     function showView(id) {
         views.forEach(v => document.getElementById(v).classList.add('hidden'));
@@ -222,24 +207,18 @@
     // 📡 HOST (老師) 邏輯
     // ==========================================
     function setupHost() {
+        if(!db) return alert("Firebase Error: Check Internet");
         state.role = 'host';
         const ref = db.ref('games').push();
         state.gameId = ref.key;
         
-        // 初始化遊戲設定
-        ref.set({
-            status: 'lobby',
-            createdAt: Date.now(),
-            settings: state.settings
-        });
-
+        ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
         showView('view-host-lobby');
         
-        // QR Code
         const joinUrl = `${window.location.origin}${window.location.pathname}?gid=${state.gameId}`;
         new QRCode(document.getElementById("qrcode"), { text: joinUrl, width: 128, height: 128 });
         
-        // 監聽玩家加入
+        // Listen for players
         db.ref(`games/${state.gameId}/players`).on('value', snap => {
             const grid = document.getElementById('player-grid');
             grid.innerHTML = '';
@@ -250,10 +229,9 @@
                 grid.innerHTML += `<div class="bg-slate-800 px-3 py-1 rounded-full border border-slate-600 text-sm animate-[pop_0.3s]">${p.avatar} ${p.name}</div>`;
             });
             document.getElementById('join-count-display').innerText = `${count} PLAYERS READY`;
-            state.playerCount = count;
         });
 
-        // 設定滑桿監聽
+        // Sliders
         const slider = document.getElementById('setting-slider');
         slider.oninput = (e) => {
             const val = parseInt(e.target.value);
@@ -278,16 +256,12 @@
             label.innerText = "TIME LIMIT";
             slider.min = 30; slider.max = 300; slider.step = 10; slider.value = 60;
         }
-        slider.oninput({target: slider}); // Trigger update
+        slider.oninput({target: slider});
     }
 
     function hostStartGame() {
-        if ((state.playerCount || 0) < 2) {
-             const warning = document.getElementById('start-warning');
-             warning.innerText = "⚠️ NEED AT LEAST 2 PLAYERS TO START!";
-             setTimeout(()=> warning.innerText = "", 3000);
-             return;
-        }
+        // 【修正】移除人數檢查，允許1人測試
+        // if ((state.playerCount || 0) < 2) return; 
 
         db.ref(`games/${state.gameId}`).update({ 
             status: 'playing', 
@@ -300,105 +274,109 @@
             ? `RACE TO ${state.settings.target} PTS` 
             : `TIME LIMIT: ${state.settings.target}s`;
             
-        startHostLoop();
+        // 啟動即時監聽
+        monitorGameLoop();
     }
 
-    function startHostLoop() {
-        const lanesContainer = document.getElementById('lanes-container');
+    function monitorGameLoop() {
+        const gameRef = db.ref(`games/${state.gameId}`);
         
-        const loop = setInterval(() => {
-            db.ref(`games/${state.gameId}`).once('value', snap => {
-                const game = snap.val();
-                if (game.status === 'ended') { clearInterval(loop); return; }
+        // 使用 .on 確保即時更新
+        gameRef.on('value', snap => {
+            const game = snap.val();
+            if(!game) return;
 
-                // 1. Update Timer
-                let timeStr = "00:00";
+            // Timer Logic
+            if (game.status === 'playing') {
+                 let timeStr = "00:00";
                 if (game.settings.mode === 'time') {
                     let left = Math.max(0, Math.ceil((game.endTime - Date.now())/1000));
                     timeStr = `${Math.floor(left/60)}:${(left%60).toString().padStart(2,'0')}`;
-                    if(left <= 0) hostEndGame();
+                    if(left <= 0 && state.role === 'host') hostEndGame();
                 } else {
                     let elapsed = Math.floor((Date.now() - game.startTime)/1000);
                     timeStr = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`;
                 }
                 document.getElementById('host-game-timer').innerText = timeStr;
+            }
 
-                // 2. Render Lanes
-                if(game.players) {
-                    const players = Object.values(game.players).sort((a,b) => b.score - a.score);
-                    // Check Score Win
-                    if (game.settings.mode === 'score' && players[0].score >= game.settings.target) {
-                        hostEndGame(players[0]);
-                    }
-
-                    // Render
-                    renderLanes(players, game.settings.target, game.settings.mode);
+            // Render Lanes if players exist
+            if(game.players) {
+                // Convert players object to array with ID
+                const players = Object.entries(game.players).map(([key, val]) => ({id: key, ...val}));
+                players.sort((a,b) => (b.score||0) - (a.score||0));
+                
+                // Host Win Check
+                if (state.role === 'host' && game.status === 'playing' && game.settings.mode === 'score') {
+                    if (players[0].score >= game.settings.target) hostEndGame(players[0]);
                 }
-            });
-        }, 500);
+                
+                if (game.status === 'ended' && state.role === 'host') {
+                    gameRef.off(); // Stop listening
+                }
+                
+                renderLanes(players, game.settings.target, game.settings.mode);
+            }
+        });
     }
 
     function renderLanes(players, target, mode) {
         const container = document.getElementById('lanes-container');
-        const maxScore = mode === 'score' ? target : Math.max(target, players[0].score * 1.2); // Time mode scales dynamically
+        // 計算最大值 (動態調整)
+        const maxScore = mode === 'score' ? target : Math.max(target*10, (players[0].score||0) * 1.2); 
         
-        // 使用 map 保存現有 DOM 避免閃爍
         players.forEach((p, index) => {
-            let el = document.getElementById(`lane-${p.name}`);
-            const pct = Math.min(100, (p.score / maxScore) * 100);
+            let el = document.getElementById(`lane-${p.id}`);
+            const pct = Math.min(100, ((p.score||0) / maxScore) * 100);
             
             if (!el) {
                 el = document.createElement('div');
-                el.id = `lane-${p.name}`;
-                el.className = 'lane-anim h-12 mb-2 bg-slate-800/50 rounded flex items-center px-2 border border-slate-700 mx-2 shadow';
-                el.style.top = (index * 60 + 10) + 'px'; // Absolute positioning for swap animation
+                el.id = `lane-${p.id}`;
+                el.className = 'lane-item h-12 bg-slate-800/80 rounded flex items-center px-2 border border-slate-700 shadow mx-2';
+                el.style.width = "calc(100% - 16px)"; // fix width
                 el.innerHTML = `
                     <div class="w-8 text-2xl mr-2">${p.avatar}</div>
                     <div class="w-24 font-bold text-white truncate text-sm">${p.name}</div>
-                    <div class="flex-1 h-4 bg-slate-700 rounded-full overflow-hidden mx-2 relative">
-                        <div class="bar-fill h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500" style="width: 0%"></div>
+                    <div class="flex-1 h-4 bg-slate-900 rounded-full overflow-hidden mx-2 relative border border-slate-600">
+                        <div class="progress-bar h-full bg-gradient-to-r from-cyan-500 to-blue-500" style="width: 0%"></div>
                     </div>
                     <div class="w-16 text-right font-mono text-cyan-400 font-bold score-txt">0</div>
                 `;
                 container.appendChild(el);
             }
             
-            // Update Position & Values
+            // Update Position (Swap Animation)
             el.style.top = (index * 60 + 10) + 'px';
-            el.querySelector('.bar-fill').style.width = pct + '%';
-            el.querySelector('.score-txt').innerText = p.score;
+            
+            // Update Content
+            el.querySelector('.progress-bar').style.width = pct + '%';
+            el.querySelector('.score-txt').innerText = p.score || 0;
             
             // Highlight leader
-            if(index === 0) el.classList.add('border-yellow-500');
-            else el.classList.remove('border-yellow-500');
+            if(index === 0) {
+                el.classList.add('border-yellow-500');
+                el.classList.remove('border-slate-700');
+            } else {
+                el.classList.remove('border-yellow-500');
+                el.classList.add('border-slate-700');
+            }
         });
     }
 
     function hostEndGame(winner = null) {
-        // If time mode, find winner now
-        if (!winner) {
-            db.ref(`games/${state.gameId}/players`).once('value', s => {
-                const arr = []; s.forEach(c=>arr.push(c.val()));
-                arr.sort((a,b)=>b.score-a.score);
-                finish(arr[0], arr);
-            });
-        } else {
-            // Fetch all for leaderboard
-             db.ref(`games/${state.gameId}/players`).once('value', s => {
-                const arr = []; s.forEach(c=>arr.push(c.val()));
-                arr.sort((a,b)=>b.score-a.score);
-                finish(winner, arr);
-            });
-        }
-        
-        function finish(w, all) {
+        db.ref(`games/${state.gameId}/players`).once('value', s => {
+            const arr = []; 
+            s.forEach(c => arr.push(c.val()));
+            arr.sort((a,b)=>(b.score||0)-(a.score||0));
+            
+            const w = winner || arr[0];
             db.ref(`games/${state.gameId}`).update({ 
                 status: 'ended', 
                 winnerName: w.name, 
-                leaderboard: all.slice(0,5) 
+                leaderboard: arr.slice(0,5) 
             });
-            showResult(w.name, all);
-        }
+            showResult(w.name, arr);
+        });
     }
 
     // ==========================================
@@ -408,11 +386,9 @@
         const name = document.getElementById('player-name').value.trim();
         if(!name) return;
         
-        state.role = 'client'; 
-        state.playerName = name;
+        state.role = 'client'; state.playerName = name;
         state.avatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
         
-        // 寫入玩家資料
         db.ref(`games/${state.gameId}/players/${state.playerId}`).set({
             name: state.playerName, score: 0, avatar: state.avatar
         });
@@ -420,18 +396,13 @@
         showView('view-student-wait');
         document.getElementById('my-avatar-display').innerText = state.avatar;
 
-        // 監聽遊戲狀態
         db.ref(`games/${state.gameId}`).on('value', snap => {
             const game = snap.val();
             if(!game) return;
+            state.settings = game.settings;
             
-            state.settings = game.settings; // Sync settings
-            
-            if (game.status === 'playing' && !state.active) {
-                startGameClient();
-            } else if (game.status === 'ended') {
-                showResult(game.winnerName, game.leaderboard);
-            }
+            if (game.status === 'playing' && !state.active) startGameClient();
+            else if (game.status === 'ended') showResult(game.winnerName, game.leaderboard);
         });
     }
 
@@ -439,17 +410,10 @@
         state.active = true;
         showView('view-game');
         generateQuestion();
-        
-        // Client Timer (Simple sync)
-        setInterval(() => {
-            if(!state.active) return;
-            // Just cosmetic timer for client, relying on host for end
-            // Optional: Implement robust sync if needed
-        }, 1000);
     }
 
     // ==========================================
-    // 🧠 遊戲核心 (答題與分數)
+    // 🧠 答題邏輯
     // ==========================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -464,8 +428,6 @@
     function generateQuestion() {
         if(!state.active) return;
         const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-        
-        // 隨分數提升難度
         let type = 'rect';
         if(state.score > 300) type = Math.random()>0.5 ? 'tri' : 'rect';
         if(state.score > 600) type = Math.random()>0.6 ? 'trap' : 'tri';
@@ -493,7 +455,6 @@
         const cx = w/2, cy = h/2, s = Math.min(w,h)/20;
         ctx.clearRect(0,0,w,h);
         
-        // Grid
         ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth=1; ctx.beginPath();
         for(let i=0; i<w/2; i+=s) { ctx.moveTo(cx+i,0); ctx.lineTo(cx+i,h); ctx.moveTo(cx-i,0); ctx.lineTo(cx-i,h); }
         for(let i=0; i<h/2; i+=s) { ctx.moveTo(0,cy+i); ctx.lineTo(w,cy+i); ctx.moveTo(0,cy-i); ctx.lineTo(w,cy-i); }
@@ -565,12 +526,11 @@
         state.active = false;
         showView('view-result');
         document.getElementById('winner-display').innerText = `🏆 ${winner} WINS!`;
-        
         let html = '';
         if(list) {
             list.slice(0, 5).forEach((p, i) => {
                 html += `<div class="flex justify-between p-2 border-b border-slate-700 ${p.name===state.playerName?'text-cyan-400':''}">
-                    <span>#${i+1} ${p.avatar} ${p.name}</span><span>${p.score}</span>
+                    <span>#${i+1} ${p.avatar} ${p.name}</span><span>${p.score || 0}</span>
                 </div>`;
             });
         }
