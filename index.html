@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena: Podium Fix</title>
+    <title>Math Arena: Host Control</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -15,7 +15,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Roboto+Mono:wght@500;700&display=swap');
         
         body { background-color: #050510; color: white; touch-action: none; user-select: none; font-family: 'Roboto Mono', monospace; overflow: hidden; }
-        
         .font-display { font-family: 'Black Ops One', cursive; }
         .neon-text { text-shadow: 0 0 10px #22d3ee; }
         .neon-gold { text-shadow: 0 0 15px #fbbf24; }
@@ -24,21 +23,23 @@
         .lane-item { position: absolute; left: 0; right: 0; transition: top 0.5s ease-in-out; }
         .progress-bar { transition: width 0.3s linear; }
         
-        /* 按鈕樣式 */
+        /* 通用按鈕 */
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
-        .btn-option { @apply border border-slate-600 text-slate-400 py-2 px-4 rounded hover:bg-slate-800 focus:bg-cyan-900 focus:text-cyan-400 focus:border-cyan-500 transition-all; }
-        .btn-option.selected { @apply bg-cyan-900 text-cyan-400 border-cyan-500 ring-2 ring-cyan-500/50; }
-
-        /* 頭像選擇網格 */
-        .avatar-btn { @apply text-4xl p-2 rounded-lg border-2 border-transparent hover:bg-slate-800 transition-all cursor-pointer grayscale opacity-70; }
-        .avatar-btn.selected { @apply border-cyan-400 bg-cyan-900/50 grayscale-0 opacity-100 scale-110 shadow-[0_0_10px_#22d3ee]; }
+        
+        /* 頭像選擇樣式 (新) */
+        .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-transparent transition-all cursor-pointer grayscale opacity-60; }
+        /* 選中時：半透明背色 + 發光邊框 + 彩色 */
+        .avatar-btn.selected { 
+            @apply bg-cyan-500/30 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.4)]; 
+        }
 
         /* 頒獎台動畫 */
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .podium-enter { animation: podium-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        /* 隱藏元素用 */
         .podium-hidden { display: none !important; }
+
+        /* 踢人按鈕 */
+        .kick-btn { @apply ml-2 text-red-500 hover:text-red-300 font-bold cursor-pointer px-2; }
     </style>
 </head>
 <body class="h-screen flex flex-col items-center justify-center bg-[#050510]">
@@ -46,27 +47,29 @@
     <div id="view-menu" class="text-center space-y-6 p-4 max-w-md w-full hidden z-50">
         <h1 class="text-6xl font-display italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2 neon-text leading-tight">MATH<br>ARENA</h1>
         <p class="text-slate-400 text-xs mb-8 tracking-[0.3em]">MULTIPLAYER BATTLE</p>
-        <button onclick="setupHost()" class="btn-primary border-l-4 border-cyan-300 text-xl py-6">📡 HOST GAME (老師)</button>
+        <button onclick="setupHost()" class="btn-primary border-l-4 border-cyan-300 text-xl py-6">📡 HOST GAME</button>
         <div class="relative py-2 opacity-30"><div class="border-t border-slate-600"></div></div>
-        <button onclick="startSinglePlayer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-6 rounded w-full">👤 單人練習</button>
+        <button onclick="alert('Student mode only in this version')" class="bg-slate-800 text-slate-500 font-bold py-3 px-6 rounded w-full cursor-not-allowed">👤 單人練習</button>
     </div>
 
     <div id="view-host-lobby" class="w-full h-full p-6 hidden flex-col max-w-4xl mx-auto">
         <h2 class="text-3xl text-cyan-400 font-display mb-6 border-b border-slate-700 pb-2">GAME SETTINGS</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
-            <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+            <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col items-center justify-center relative">
                 <div class="bg-white p-2 rounded-lg mb-4 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                     <div id="qrcode"></div>
                 </div>
                 <div class="text-2xl font-bold text-white mb-2" id="join-count-display">0 PLAYERS READY</div>
-                <div id="player-grid" class="mt-4 flex flex-wrap justify-center gap-2 w-full max-h-40 overflow-y-auto"></div>
+                
+                <div id="player-grid" class="mt-4 flex flex-wrap justify-center gap-2 w-full max-h-60 overflow-y-auto content-start p-2"></div>
             </div>
+            
             <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col">
                 <div class="mb-6">
                     <label class="block text-slate-400 text-sm mb-2 font-bold">GAME MODE</label>
                     <div class="grid grid-cols-2 gap-2">
-                        <button id="btn-mode-score" class="btn-option selected" onclick="setMode('score')">🏁 Race</button>
-                        <button id="btn-mode-time" class="btn-option" onclick="setMode('time')">⏱️ Timer</button>
+                        <button id="btn-mode-score" class="border border-slate-600 text-slate-400 py-2 rounded selected:bg-cyan-900 selected:text-cyan-400" onclick="setMode('score')">🏁 Race</button>
+                        <button id="btn-mode-time" class="border border-slate-600 text-slate-400 py-2 rounded" onclick="setMode('time')">⏱️ Timer</button>
                     </div>
                 </div>
                 <div class="mb-6">
@@ -83,15 +86,14 @@
 
     <div id="view-host-game" class="w-full h-full p-4 hidden flex-col bg-slate-950 relative overflow-hidden">
         <div class="flex justify-between items-center mb-4 px-4 py-2 bg-slate-900/80 rounded-lg border border-slate-700 shrink-0 z-20">
-            <div class="font-display text-2xl italic text-slate-300">LIVE RANKING</div>
+            <div class="font-display text-2xl italic text-slate-300">RANKING</div>
             <div class="text-4xl font-mono font-bold text-cyan-400 neon-text" id="host-game-timer">00:00</div>
-            <div class="text-sm text-slate-500 font-bold" id="host-target-display">TARGET: 1000</div>
+            <div class="text-sm text-slate-500 font-bold" id="host-target-display">TARGET</div>
         </div>
-        
         <div class="flex-1 relative mx-4 rounded-xl bg-slate-900/30 border border-slate-800 overflow-y-auto" id="lanes-container"></div>
         
         <div id="host-control-panel" class="absolute bottom-0 left-0 w-full p-6 bg-slate-900/90 border-t-4 border-yellow-500 z-50 transform translate-y-full transition-transform duration-300 flex flex-col items-center justify-center">
-            <div class="text-yellow-400 font-bold text-xl mb-2 animate-pulse">✨ COMPETITION FINISHED ✨</div>
+            <div class="text-yellow-400 font-bold text-xl mb-2 animate-pulse">✨ FINISHED ✨</div>
             <button onclick="revealWinners()" class="bg-gradient-to-r from-yellow-500 to-orange-600 text-white font-black text-3xl py-4 px-12 rounded-full shadow-[0_0_30px_#fbbf24] hover:scale-105 transition-transform">
                 🏆 REVEAL RESULTS
             </button>
@@ -106,7 +108,7 @@
 
     <div id="view-avatar-select" class="text-center p-6 max-w-md w-full hidden z-50 flex-col">
         <h2 class="text-xl font-bold mb-4 text-cyan-400">CHOOSE AVATAR</h2>
-        <div class="grid grid-cols-4 gap-3 mb-6" id="avatar-grid"></div>
+        <div class="grid grid-cols-4 gap-4 mb-8" id="avatar-grid"></div>
         <button onclick="confirmJoin()" class="btn-primary" id="btn-join-confirm" disabled>READY</button>
         <button onclick="showView('view-join')" class="text-slate-500 underline mt-2">BACK</button>
     </div>
@@ -114,9 +116,10 @@
     <div id="view-student-wait" class="text-center p-6 w-full hidden z-50">
         <div class="text-6xl mb-4 animate-bounce">⏳</div>
         <h2 class="text-2xl font-bold text-white mb-2">WAITING FOR HOST</h2>
-        <div class="mt-8 p-4 bg-slate-900 rounded border border-slate-700 flex flex-col items-center">
-            <span id="my-final-avatar" class="text-5xl mb-2"></span>
-            <span id="my-final-name" class="font-bold text-cyan-400"></span>
+        <div class="mt-8 p-4 bg-slate-900 rounded border border-slate-700 flex flex-col items-center relative">
+            <div id="my-final-avatar" class="text-5xl mb-2 z-10 relative"></div>
+            <div class="absolute inset-0 bg-cyan-500/10 rounded blur-xl"></div> 
+            <span id="my-final-name" class="font-bold text-cyan-400 z-10"></span>
         </div>
     </div>
 
@@ -133,13 +136,12 @@
         </div>
         <div class="flex-1 relative flex justify-center items-center overflow-hidden" id="canvas-container">
             <canvas id="gameCanvas"></canvas>
-            <div id="feedback-msg" class="absolute top-1/3 left-1/2 -translate-x-1/2 text-4xl font-black opacity-0 pointer-events-none whitespace-nowrap z-30 transform scale-50 transition-all duration-200" style="-webkit-text-stroke: 1px black;"></div>
+            <div id="feedback-msg" class="absolute top-1/3 left-1/2 -translate-x-1/2 text-4xl font-black opacity-0 pointer-events-none z-30 transform scale-50 transition-all duration-200"></div>
         </div>
         <div class="bg-slate-900 border-t border-slate-800 p-2 h-[45vh] grid grid-rows-[auto_1fr] gap-2 z-10 shrink-0">
-            <div class="bg-slate-800/50 rounded p-2 flex flex-col justify-center items-center relative border border-slate-700">
-                <div class="text-[10px] text-slate-500 absolute top-1 left-2">INPUT</div>
-                <div id="input-display" class="text-3xl font-mono font-bold tracking-[0.5em] text-white my-1 min-h-[40px]">_</div>
-                <div id="hint-display" class="text-xs text-yellow-500/80 text-center font-mono"></div>
+            <div class="bg-slate-800/50 rounded p-2 flex flex-col justify-center items-center border border-slate-700">
+                <div id="input-display" class="text-3xl font-mono font-bold tracking-[0.5em] text-white">_</div>
+                <div id="hint-display" class="text-xs text-yellow-500/80 font-mono"></div>
             </div>
             <div class="grid grid-cols-3 gap-1 h-full pb-safe">
                 <button class="bg-slate-800 text-cyan-100 rounded text-2xl font-bold active:bg-cyan-700" onclick="input('7')">7</button>
@@ -160,98 +162,75 @@
 
     <div id="view-podium" class="text-center w-full hidden z-[100] bg-slate-950 absolute inset-0 flex flex-col items-center justify-center overflow-hidden">
         <h1 class="text-5xl font-display text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-8 neon-gold z-10">WINNERS</h1>
-        
-        <div class="flex items-end justify-center space-x-2 md:space-x-4 mb-12 w-full max-w-3xl px-4 z-10" id="podium-container">
+        <div class="flex items-end justify-center space-x-4 mb-12 w-full max-w-3xl px-4 z-10" id="podium-container">
             <div id="podium-2" class="flex flex-col items-center podium-enter opacity-0" style="animation-delay: 0.5s">
-                <div class="text-3xl mb-2 animate-bounce" id="p2-avatar">🥈</div>
-                <div class="text-white font-bold mb-1 text-sm" id="p2-name">Player</div>
-                <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg">
+                <div class="text-4xl mb-2" id="p2-avatar"></div>
+                <div class="text-white font-bold text-sm" id="p2-name"></div>
+                <div class="w-20 md:w-28 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2">
                     <span class="text-2xl font-black text-slate-500">2</span>
                 </div>
-                <div class="mt-2 text-cyan-400 font-bold" id="p2-score">0</div>
+                <div class="mt-2 text-cyan-400 font-bold" id="p2-score"></div>
             </div>
-            
             <div id="podium-1" class="flex flex-col items-center podium-enter opacity-0" style="animation-delay: 1.5s">
-                <div class="text-6xl mb-2 animate-[bounce_1s_infinite]" id="p1-avatar">👑</div>
-                <div class="text-yellow-400 font-bold text-xl mb-1 neon-gold" id="p1-name">WINNER</div>
-                <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.3)] z-20">
+                <div class="text-7xl mb-2 animate-bounce" id="p1-avatar"></div>
+                <div class="text-yellow-400 font-bold text-xl neon-gold" id="p1-name"></div>
+                <div class="w-24 md:w-36 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 z-20 shadow-lg">
                     <span class="text-4xl font-black text-yellow-900/50">1</span>
                 </div>
-                <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score">0</div>
+                <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score"></div>
             </div>
-            
             <div id="podium-3" class="flex flex-col items-center podium-enter opacity-0" style="animation-delay: 1.0s">
-                <div class="text-3xl mb-2 animate-bounce" id="p3-avatar">🥉</div>
-                <div class="text-white font-bold mb-1 text-sm" id="p3-name">Player</div>
-                <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg">
+                <div class="text-4xl mb-2" id="p3-avatar"></div>
+                <div class="text-white font-bold text-sm" id="p3-name"></div>
+                <div class="w-20 md:w-28 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2">
                     <span class="text-2xl font-black text-orange-900/50">3</span>
                 </div>
-                <div class="mt-2 text-cyan-400 font-bold" id="p3-score">0</div>
+                <div class="mt-2 text-cyan-400 font-bold" id="p3-score"></div>
             </div>
         </div>
-        
         <button onclick="location.href=location.pathname" class="btn-primary max-w-xs z-20">NEW GAME</button>
     </div>
 
 <script>
-    // ==========================================
-    // ⚙️ Firebase Config
-    // ==========================================
+    // Firebase Setup
     const firebaseConfig = {
         apiKey: "AIzaSyAYnQB2o5cPn42RiNAik7537ihduICJwdQ",
         authDomain: "fwftmath.firebaseapp.com",
         projectId: "fwftmath",
         storageBucket: "fwftmath.firebasestorage.app",
         messagingSenderId: "70090299689",
-        appId: "1:70090299689:web:ae300db1f79a3eda62bf38",
-        measurementId: "G-PVHYMHY8LK"
+        appId: "1:70090299689:web:ae300db1f79a3eda62bf38"
     };
-
     const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼'];
-
-    // ==========================================
-    // Core Logic
-    // ==========================================
     let app, db;
-    try { app = firebase.initializeApp(firebaseConfig); db = firebase.database(); } 
-    catch(e) { console.error("Firebase Error", e); }
+    try { app = firebase.initializeApp(firebaseConfig); db = firebase.database(); } catch(e) {}
 
+    // Audio
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playTone(f, t, d) {
-        if(audioCtx.state==='suspended') audioCtx.resume();
-        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-        o.type=t; o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
-        o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+d); o.stop(audioCtx.currentTime+d);
-    }
+    function playTone(f,t,d){if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d);}
 
+    // State
     const urlParams = new URLSearchParams(window.location.search);
     let state = {
         role: 'none', gameId: urlParams.get('gid'),
-        playerId: 'p_' + Math.random().toString(36).substr(2, 6),
-        playerName: 'Guest', avatar: '',
-        score: 0, streak: 0, active: false,
+        playerId: 'p_' + Math.random().toString(36).substr(2,6),
+        playerName: 'Guest', avatar: '', score: 0, active: false,
         settings: { mode: 'score', target: 1000 },
         q: null, input: ''
     };
 
-    const views = ['view-menu', 'view-host-lobby', 'view-host-game', 'view-join', 'view-avatar-select', 'view-student-wait', 'view-game', 'view-podium'];
+    const views = ['view-menu','view-host-lobby','view-host-game','view-join','view-avatar-select','view-student-wait','view-game','view-podium'];
     function showView(id) {
         views.forEach(v => document.getElementById(v).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
-        if(id.includes('host') || id==='view-avatar-select') document.getElementById(id).classList.add('flex');
-        if(id === 'view-game') { resizeCanvas(); }
+        if(id.includes('host')||id==='view-avatar-select') document.getElementById(id).classList.add('flex');
+        if(id==='view-game') resizeCanvas();
     }
 
-    window.onload = () => {
-        if (state.gameId) showView('view-join');
-        else showView('view-menu');
-    };
+    window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
 
-    // ==========================================
-    // 📡 HOST LOGIC
-    // ==========================================
+    // === HOST ===
     function setupHost() {
-        if(!db) return alert("Network Error");
         state.role = 'host';
         const ref = db.ref('games').push();
         state.gameId = ref.key;
@@ -260,48 +239,66 @@
         showView('view-host-lobby');
         new QRCode(document.getElementById("qrcode"), { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
         
+        // Host 監聽玩家 + 踢人按鈕渲染
         db.ref(`games/${state.gameId}/players`).on('value', snap => {
             const grid = document.getElementById('player-grid');
             grid.innerHTML = '';
             let count = 0;
             snap.forEach(c => {
                 count++;
-                grid.innerHTML += `<div class="bg-slate-800 px-3 py-1 rounded-full border border-slate-600 text-sm animate-[pop_0.3s]">${c.val().avatar} ${c.val().name}</div>`;
+                const p = c.val();
+                const div = document.createElement('div');
+                div.className = "bg-slate-800 px-3 py-1 rounded-full border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]";
+                div.innerHTML = `
+                    <span>${p.avatar} ${p.name}</span>
+                    <span onclick="kickPlayer('${c.key}')" class="kick-btn">×</span>
+                `;
+                grid.appendChild(div);
             });
             document.getElementById('join-count-display').innerText = `${count} PLAYERS READY`;
         });
 
+        // Sliders
         const slider = document.getElementById('setting-slider');
         slider.oninput = (e) => {
             state.settings.target = parseInt(e.target.value);
-            document.getElementById('setting-value').innerText = state.settings.mode === 'score' ? state.settings.target + " PTS" : state.settings.target + " SEC";
+            document.getElementById('setting-value').innerText = state.settings.mode==='score' ? state.settings.target+" PTS" : state.settings.target+" SEC";
             db.ref(`games/${state.gameId}/settings`).update(state.settings);
         };
     }
 
+    // 踢人功能
+    window.kickPlayer = (pid) => {
+        if(confirm("Kick this player?")) {
+            db.ref(`games/${state.gameId}/players/${pid}`).remove();
+        }
+    };
+
     function setMode(mode) {
         state.settings.mode = mode;
         const slider = document.getElementById('setting-slider');
-        document.getElementById('btn-mode-score').classList.toggle('selected', mode === 'score');
-        document.getElementById('btn-mode-time').classList.toggle('selected', mode === 'time');
+        // Toggle Styles
+        document.getElementById('btn-mode-score').className = mode==='score' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
+        document.getElementById('btn-mode-time').className = mode==='time' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
         
-        if (mode === 'score') {
+        if(mode==='score') {
             document.getElementById('setting-label').innerText = "TARGET SCORE";
-            slider.min = 500; slider.max = 5000; slider.value = 1000;
+            slider.min=500; slider.max=5000; slider.value=1000;
         } else {
             document.getElementById('setting-label').innerText = "TIME LIMIT";
-            slider.min = 30; slider.max = 300; slider.value = 60;
+            slider.min=30; slider.max=300; slider.value=60;
         }
-        slider.oninput({target: slider});
+        slider.oninput({target:slider});
     }
 
     function hostStartGame() {
-        db.ref(`games/${state.gameId}`).update({ 
-            status: 'playing', startTime: Date.now(),
-            endTime: state.settings.mode === 'time' ? Date.now() + state.settings.target * 1000 : null
-        });
+        // 設定結束時間
+        const updateData = { status: 'playing', startTime: Date.now() };
+        if(state.settings.mode === 'time') {
+            updateData.endTime = Date.now() + (state.settings.target * 1000);
+        }
+        db.ref(`games/${state.gameId}`).update(updateData);
         showView('view-host-game');
-        document.getElementById('host-target-display').innerText = state.settings.mode === 'score' ? `TARGET: ${state.settings.target}` : `TIME: ${state.settings.target}s`;
         monitorGameLoop();
     }
 
@@ -311,14 +308,17 @@
             const game = snap.val();
             if(!game) return;
 
-            // 1. Timer / Status
+            // Timer Logic (HOST IS AUTHORITY)
             if (game.status === 'playing') {
                 let timeStr = "00:00";
                 if (game.settings.mode === 'time') {
+                    // Host checks time
                     let left = Math.max(0, Math.ceil((game.endTime - Date.now())/1000));
                     timeStr = `${Math.floor(left/60)}:${(left%60).toString().padStart(2,'0')}`;
-                    // Host triggers finish ONLY when time hits 0
-                    if(left <= 0 && state.role === 'host') hostFinishGame(); 
+                    // Only HOST triggers finish
+                    if(left <= 0 && state.role === 'host') {
+                        hostFinishGame();
+                    }
                 } else {
                     let elapsed = Math.floor((Date.now() - game.startTime)/1000);
                     timeStr = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`;
@@ -331,47 +331,37 @@
                 gameRef.off();
             }
 
-            // 2. Render Lanes
+            // Render Players
             if(game.players) {
-                const players = Object.values(game.players).sort((a,b) => (b.score||0) - (a.score||0));
-                
-                // Score Mode Win Condition
-                if (state.role === 'host' && game.status === 'playing' && game.settings.mode === 'score') {
-                    if (players[0].score >= game.settings.target) hostFinishGame();
+                const players = Object.values(game.players).sort((a,b)=>(b.score||0)-(a.score||0));
+                // Score Mode Win Check
+                if (state.role==='host' && game.status==='playing' && game.settings.mode==='score') {
+                    if(players[0].score >= game.settings.target) hostFinishGame();
                 }
-                
                 renderLanes(players, game.settings.target, game.settings.mode);
             }
         });
     }
 
     function hostFinishGame() {
-        // Just freeze state, wait for manual reveal
         db.ref(`games/${state.gameId}`).update({ status: 'finished' });
     }
 
     function revealWinners() {
-        // Calculate Winners (Top 3 Highest Scores)
         db.ref(`games/${state.gameId}/players`).once('value', s => {
             const arr = []; s.forEach(c => arr.push(c.val()));
-            // Sort Descending (Highest Score First)
             arr.sort((a,b) => (b.score||0)-(a.score||0));
-            
-            db.ref(`games/${state.gameId}`).update({ 
-                status: 'results', 
-                leaderboard: arr.slice(0,3) // Pass top 3
-            });
+            db.ref(`games/${state.gameId}`).update({ status: 'results', leaderboard: arr.slice(0,3) });
         });
     }
 
     function renderLanes(players, target, mode) {
         const container = document.getElementById('lanes-container');
-        const maxScore = mode === 'score' ? target : Math.max(target*5, (players[0].score||0) * 1.2); 
+        const maxScore = mode==='score' ? target : Math.max(target*5, (players[0].score||0)*1.2);
         
         players.forEach((p, index) => {
             let el = document.getElementById(`lane-${p.name}`);
-            const pct = Math.min(100, ((p.score||0) / maxScore) * 100);
-            
+            const pct = Math.min(100, ((p.score||0)/maxScore)*100);
             if (!el) {
                 el = document.createElement('div');
                 el.id = `lane-${p.name}`;
@@ -390,14 +380,11 @@
             el.style.top = (index * 60 + 10) + 'px';
             el.querySelector('.progress-bar').style.width = pct + '%';
             el.querySelector('.score-txt').innerText = p.score || 0;
-            if(index===0) el.classList.add('border-yellow-500');
-            else el.classList.remove('border-yellow-500');
+            if(index===0) el.classList.add('border-yellow-500'); else el.classList.remove('border-yellow-500');
         });
     }
 
-    // ==========================================
-    // 📱 STUDENT LOGIC
-    // ==========================================
+    // === STUDENT ===
     function goToAvatarSelect() {
         const name = document.getElementById('player-name').value.trim();
         if(!name) return alert("Enter Name!");
@@ -410,6 +397,7 @@
             btn.className = 'avatar-btn';
             btn.innerText = av;
             btn.onclick = () => {
+                // UI Selection Logic
                 document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 state.avatar = av;
@@ -422,9 +410,18 @@
 
     function confirmJoin() {
         if(!state.avatar) return;
+        const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
         
-        db.ref(`games/${state.gameId}/players/${state.playerId}`).set({
+        playerRef.set({
             name: state.playerName, score: 0, avatar: state.avatar
+        });
+
+        // 監聽自己是否被踢
+        playerRef.on('value', snap => {
+            if(!snap.exists() && state.role !== 'host') {
+                alert("You have been removed by the host.");
+                location.reload();
+            }
         });
 
         showView('view-student-wait');
@@ -439,6 +436,11 @@
             if (game.status === 'playing') {
                 document.getElementById('game-freeze-overlay').classList.add('hidden');
                 if (!state.active) startGameClient();
+                // Client Timer Display ONLY
+                if(game.settings.mode === 'time') {
+                    let left = Math.max(0, Math.ceil((game.endTime - Date.now())/1000));
+                    document.getElementById('client-timer').innerText = `${Math.floor(left/60)}:${(left%60).toString().padStart(2,'0')}`;
+                }
             } 
             else if (game.status === 'finished') {
                 state.active = false;
@@ -456,57 +458,38 @@
         generateQuestion();
     }
 
-    // ==========================================
-    // 🏆 PODIUM LOGIC (Dynamic 2 or 3)
-    // ==========================================
+    // === PODIUM ===
     function showPodium(leaders) {
         state.active = false;
         showView('view-podium');
         
-        // Confetti
-        const end = Date.now() + 3000;
+        const duration = 3000, end = Date.now() + duration;
         (function frame() {
             confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 } });
             confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 } });
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
 
-        // Helper
-        const updateSlot = (rankId, p) => {
+        const setP = (rank, p) => {
             if(!p) return;
-            document.getElementById(`${rankId}-name`).innerText = p.name;
-            document.getElementById(`${rankId}-avatar`).innerText = p.avatar; // Ensure Avatar Matches
-            document.getElementById(`${rankId}-score`).innerText = p.score;
+            document.getElementById(`p${rank}-name`).innerText = p.name;
+            document.getElementById(`p${rank}-avatar`).innerText = p.avatar; // Ensure consistency
+            document.getElementById(`p${rank}-score`).innerText = p.score;
         };
 
-        if(leaders && leaders.length > 0) {
-            // 1st Place (Always exists)
-            updateSlot('p1', leaders[0]);
+        if(leaders && leaders.length>0) {
+            setP(1, leaders[0]);
+            if(leaders.length>=2) { setP(2, leaders[1]); document.getElementById('podium-2').classList.remove('podium-hidden'); } 
+            else document.getElementById('podium-2').classList.add('podium-hidden');
             
-            // 2nd Place
-            if(leaders.length >= 2) {
-                updateSlot('p2', leaders[1]);
-                document.getElementById('podium-2').classList.remove('podium-hidden');
-            } else {
-                document.getElementById('podium-2').classList.add('podium-hidden');
-            }
-
-            // 3rd Place (Hide if only 2 players)
-            if(leaders.length >= 3) {
-                updateSlot('p3', leaders[2]);
-                document.getElementById('podium-3').classList.remove('podium-hidden');
-            } else {
-                document.getElementById('podium-3').classList.add('podium-hidden');
-            }
+            if(leaders.length>=3) { setP(3, leaders[2]); document.getElementById('podium-3').classList.remove('podium-hidden'); }
+            else document.getElementById('podium-3').classList.add('podium-hidden');
         }
     }
 
-    // ==========================================
-    // 🧠 MATH & INPUT LOGIC
-    // ==========================================
+    // === GAME LOGIC ===
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    
     function resizeCanvas() {
         const p = document.getElementById('canvas-container');
         if(!p) return;
@@ -529,7 +512,6 @@
             q.b = r(6, 14); if(q.b%2!==0)q.b++; q.h = r(4, 10); q.ans = (q.b*q.h)/2;
             state.hint = "Area = B × H ÷ 2";
         }
-        
         state.q = q; state.input = "";
         document.getElementById('input-display').innerText = "_";
         drawQuestion();
@@ -539,7 +521,6 @@
         const w = canvas.width, h = canvas.height;
         const cx = w/2, cy = h/2, s = Math.min(w,h)/18;
         ctx.clearRect(0,0,w,h);
-        
         ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(34,211,238,0.1)';
         ctx.font = "bold 20px Roboto Mono"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         
@@ -569,7 +550,6 @@
         if(!state.active || !state.input) return;
         const val = parseInt(state.input);
         const feedback = document.getElementById('feedback-msg');
-        
         if(val === state.q.ans) {
             state.score += 100;
             playTone(800, 'triangle', 0.1);
@@ -585,8 +565,6 @@
         }
         document.getElementById('client-score').innerText = state.score + " PTS";
     };
-
-    window.startSinglePlayer = () => alert("For multiplayer only");
 </script>
 </body>
 </html>
