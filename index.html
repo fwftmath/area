@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V15: Ranked & Sync</title>
+    <title>Math Arena V16: Stable Timer</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -24,9 +24,16 @@
         
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
         
-        /* 頭像樣式升級 */
+        /* === V16 新增：強力黃光選中效果 === */
         .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-slate-700 transition-all cursor-pointer grayscale opacity-70 bg-slate-800; }
-        .avatar-btn.selected { @apply bg-cyan-900/80 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_20px_rgba(34,211,238,0.6)] z-10; }
+        
+        /* 選中時：黃色邊框 + 黃色強力發光 */
+        .avatar-btn.selected { 
+            @apply bg-slate-800 grayscale-0 opacity-100 scale-110 z-10;
+            border-color: #fbbf24; /* Amber-400 */
+            box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.6); /* 黃金光暈 */
+        }
+        
         .avatar-btn.taken { @apply opacity-20 cursor-not-allowed border-red-900 bg-slate-900 scale-90 grayscale; }
 
         .kick-btn { @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors; }
@@ -144,7 +151,8 @@
     <div id="view-podium" class="text-center w-full hidden z-[100] bg-slate-950 absolute inset-0 flex flex-col items-center justify-center">
         <h1 class="text-5xl font-display text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-12 neon-gold z-10">CHAMPIONS</h1>
         <div class="flex items-end justify-center space-x-2 md:space-x-4 mb-12 w-full max-w-3xl px-4 z-10" id="podium-container">
-            <div id="podium-2" class="flex flex-col items-center podium-hidden opacity-0">
+            
+            <div id="podium-2" class="flex flex-col items-center podium-hidden opacity-0 order-1">
                 <div class="text-4xl mb-2" id="p2-avatar"></div>
                 <div class="text-white font-bold text-sm" id="p2-name"></div>
                 <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg">
@@ -152,7 +160,8 @@
                 </div>
                 <div class="mt-2 text-cyan-400 font-bold" id="p2-score"></div>
             </div>
-            <div id="podium-1" class="flex flex-col items-center podium-enter opacity-0">
+
+            <div id="podium-1" class="flex flex-col items-center podium-enter opacity-0 order-2 mx-4">
                 <div class="text-7xl mb-2 animate-bounce" id="p1-avatar"></div>
                 <div class="text-yellow-400 font-bold text-xl neon-gold" id="p1-name"></div>
                 <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.4)] z-20">
@@ -160,7 +169,8 @@
                 </div>
                 <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score"></div>
             </div>
-            <div id="podium-3" class="flex flex-col items-center podium-hidden opacity-0">
+
+            <div id="podium-3" class="flex flex-col items-center podium-hidden opacity-0 order-3">
                 <div class="text-4xl mb-2" id="p3-avatar"></div>
                 <div class="text-white font-bold text-sm" id="p3-name"></div>
                 <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg">
@@ -168,6 +178,7 @@
                 </div>
                 <div class="mt-2 text-cyan-400 font-bold" id="p3-score"></div>
             </div>
+
         </div>
         <button onclick="location.href=location.pathname" class="btn-primary max-w-xs z-20">NEW GAME</button>
     </div>
@@ -184,17 +195,17 @@
 
     let app, db;
     window.addEventListener('load', () => {
-        const statusEl = document.getElementById('db-status');
         try {
             app = firebase.initializeApp(firebaseConfig);
             db = firebase.database();
             db.ref(".info/connected").on("value", (snap) => {
-                if(statusEl) statusEl.innerText = snap.val() ? "🟢 ONLINE" : "🟠 CONNECTING...";
-                if(statusEl) statusEl.className = snap.val() ? "text-xs text-green-400 font-bold mb-4" : "text-xs text-orange-400 font-bold mb-4";
+                const statusEl = document.getElementById('db-status');
+                if(statusEl) {
+                    statusEl.innerText = snap.val() ? "🟢 ONLINE" : "🟠 CONNECTING...";
+                    statusEl.className = snap.val() ? "text-xs text-green-400 font-bold mb-4" : "text-xs text-orange-400 font-bold mb-4";
+                }
             });
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     });
 
     const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼','🦊','🐨','🐮','🐷'];
@@ -208,7 +219,8 @@
         playerName: 'Guest', avatar: '',
         score: 0, active: false,
         settings: { mode: 'time', target: 60 },
-        q: null, input: '', endTime: 0
+        q: null, input: '', endTime: 0,
+        hostLoop: null // 新增：Host 專用計時器
     };
     let localTimerInterval = null;
 
@@ -223,7 +235,7 @@
     window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
 
     // ======================================
-    // HOST LOGIC (UPDATED)
+    // HOST LOGIC (V16 FIXED)
     // ======================================
     function setupHost() {
         if (!db) return alert("Database not ready.");
@@ -286,51 +298,63 @@
         showView('view-host-game');
         document.getElementById('host-target-display').innerText = state.settings.mode==='score' ? `TARGET: ${state.settings.target}` : "TIME LEFT";
         startLocalTicker(state.settings.mode === 'time' ? state.endTime : null, 'host-timer-display');
-        monitorGameLoop();
+        
+        // *** V16 FIX: 啟動獨立的主機檢查循環 ***
+        if (state.hostLoop) clearInterval(state.hostLoop);
+        state.hostLoop = setInterval(hostGameLoopTick, 1000); // 每秒檢查一次
+        
+        monitorGameUpdates();
     }
 
-    function monitorGameLoop() {
+    // V16: 獨立的主機邏輯，不依賴 DB 變動
+    function hostGameLoopTick() {
+        if (state.settings.mode === 'time') {
+            if (Date.now() >= state.endTime) {
+                clearInterval(state.hostLoop); // 停止檢查
+                executeGameFinish();
+            }
+        }
+    }
+
+    function monitorGameUpdates() {
         const gameRef = db.ref(`games/${state.gameId}`);
         gameRef.on('value', snap => {
             const game = snap.val();
             if(!game) return;
-            
-            // 監控時間結束
-            if (game.status === 'playing' && game.settings.mode === 'time' && state.role === 'host') {
-                const left = Math.ceil((game.endTime - Date.now())/1000);
-                if(left <= 0) executeGameFinish();
-            } 
-            
-            // 監控狀態切換
-            else if (game.status === 'results') {
+
+            // 監聽狀態切換 (為了顯示 Podium)
+            if (game.status === 'results') {
                 showPodium(game.leaderboard);
-                gameRef.off();
+                gameRef.off(); // 停止監聽
+                if (state.hostLoop) clearInterval(state.hostLoop);
             }
 
             // 更新 Host 畫面長條圖
             if(game.players) {
                 const players = Object.values(game.players).sort((a,b)=>(b.score||0)-(a.score||0));
-                // 目標分數模式的自動結束
-                if (state.role==='host' && game.status==='playing' && game.settings.mode==='score' && players[0].score >= game.settings.target) executeGameFinish();
+                // 分數模式的結束檢查
+                if (state.role==='host' && game.status==='playing' && game.settings.mode==='score' && players[0].score >= game.settings.target) {
+                    executeGameFinish();
+                }
                 renderLanes(players, game.settings.target, game.settings.mode);
             }
         });
     }
 
     function executeGameFinish() {
-        // 1. 先設為 finished，讓所有 Client 停止動作
+        // 1. 廣播結束，鎖定客戶端
         db.ref(`games/${state.gameId}`).update({ status: 'finished' });
         document.getElementById('host-status-msg').style.opacity = 1;
         if(localTimerInterval) clearInterval(localTimerInterval);
 
-        // 2. 等待 1.5 秒讓所有分數上傳完畢，再計算
+        // 2. 緩衝後結算
         setTimeout(() => {
             db.ref(`games/${state.gameId}/players`).once('value', s => {
                 const arr = [];
                 s.forEach(c => arr.push(c.val()));
-                // 3. 抓取所有人並排序
+                // 3. 排序
                 arr.sort((a,b) => (parseInt(b.score)||0) - (parseInt(a.score)||0));
-                // 4. 寫入排行榜，狀態改為 results
+                // 4. 寫入前三名
                 db.ref(`games/${state.gameId}`).update({ status: 'results', leaderboard: arr.slice(0, 3) });
             });
         }, 1500);
@@ -358,7 +382,7 @@
     }
 
     // ======================================
-    // CLIENT LOGIC (UPDATED: Avatar Sync)
+    // CLIENT LOGIC
     // ======================================
     function goToAvatarSelect() {
         const name = document.getElementById('player-name').value.trim();
@@ -366,7 +390,6 @@
         state.playerName = name;
         showView('view-avatar-select');
         
-        // 渲染按鈕
         const grid = document.getElementById('avatar-grid');
         grid.innerHTML = '';
         AVATAR_OPTIONS.forEach((av, idx) => {
@@ -378,20 +401,14 @@
             grid.appendChild(btn);
         });
 
-        // 監聽哪些頭像被選走了
+        // Sync avatars
         db.ref(`games/${state.gameId}/players`).on('value', snap => {
-            // 重置狀態
             document.querySelectorAll('.avatar-btn').forEach(b => {
-                if(!b.classList.contains('selected')) {
-                    b.classList.remove('taken');
-                }
+                if(!b.classList.contains('selected')) b.classList.remove('taken');
             });
-
-            // 標記已被佔用的
             snap.forEach(c => {
                 const p = c.val();
-                if (p.avatar && p.name !== state.playerName) { // 排除自己
-                    // 找到對應的按鈕
+                if (p.avatar && p.name !== state.playerName) {
                     AVATAR_OPTIONS.forEach((opt, idx) => {
                         if (opt === p.avatar) {
                             const btn = document.getElementById(`av-btn-${idx}`);
@@ -405,10 +422,10 @@
 
     function selectAvatar(av, idx) {
         const btn = document.getElementById(`av-btn-${idx}`);
-        if (btn.classList.contains('taken')) return; // 不能選被拿走的
+        if (btn.classList.contains('taken')) return; 
 
         document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
+        btn.classList.add('selected'); // V16: Triggers Gold Glow CSS
         state.avatar = av;
         document.getElementById('btn-join-confirm').disabled = false;
     }
@@ -416,11 +433,8 @@
     function confirmJoin() {
         if(!db) return alert("Waiting for connection...");
         const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
-        // 嘗試寫入
         playerRef.set({ name: state.playerName, score: 0, avatar: state.avatar });
-        
-        // 移除監聽器，避免進入遊戲後還在消耗資源
-        db.ref(`games/${state.gameId}/players`).off();
+        db.ref(`games/${state.gameId}/players`).off(); // Stop syncing avatars
 
         showView('view-student-wait');
         document.getElementById('my-final-avatar').innerText = state.avatar;
@@ -440,9 +454,8 @@
                     startLocalTicker(game.endTime, 'client-timer-display');
                 }
             } 
-            // **** 新增：嚴格停止邏輯 ****
             else if (game.status === 'finished' || game.status === 'calculating') {
-                state.active = false; // 禁止輸入
+                state.active = false;
                 if(localTimerInterval) clearInterval(localTimerInterval);
                 document.getElementById('game-freeze-overlay').classList.remove('hidden');
             } 
@@ -462,7 +475,6 @@
             const left = Math.ceil((endTime - Date.now()) / 1000);
             if(left <= 0) {
                 el.innerText = "00:00";
-                // Host 不在這邊停止，Host 在 main loop 停止
                 if(state.role !== 'host') clearInterval(localTimerInterval);
                 return;
             }
@@ -471,28 +483,45 @@
     }
 
     // ======================================
-    // PODIUM
+    // PODIUM (V16 FIXED)
     // ======================================
     function showPodium(leaders) {
         state.active = false;
         if(localTimerInterval) clearInterval(localTimerInterval);
         showView('view-podium');
+        
+        // Confetti
         const end = Date.now() + 3000;
         (function frame() {
             confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 } });
             confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 } });
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
+
+        // V16: Robust Podium Logic
+        if(!leaders) leaders = [];
+        
         const setP = (rank, p) => {
             const el = document.getElementById(`podium-${rank}`);
-            if(!p) { el.classList.add('podium-hidden'); return; }
-            el.classList.remove('podium-hidden'); el.classList.add('podium-enter');
-            document.getElementById(`p${rank}-name`).innerText = p.name;
-            document.getElementById(`p${rank}-avatar`).innerText = p.avatar;
-            document.getElementById(`p${rank}-score`).innerText = p.score;
+            if(!p) { 
+                // 如果沒有這個名次的玩家，隱藏柱子
+                el.classList.add('podium-hidden'); 
+            } else {
+                // 如果有，顯示並填入資料
+                el.classList.remove('podium-hidden'); 
+                el.classList.add('podium-enter');
+                document.getElementById(`p${rank}-name`).innerText = p.name;
+                document.getElementById(`p${rank}-avatar`).innerText = p.avatar;
+                document.getElementById(`p${rank}-score`).innerText = p.score;
+            }
         };
-        if(!leaders) leaders = [];
-        setP(1, leaders[0]); setP(2, leaders[1]); setP(3, leaders[2]);
+
+        // Rank 1 (Array index 0)
+        setP(1, leaders[0]); 
+        // Rank 2 (Array index 1)
+        setP(2, leaders[1]); 
+        // Rank 3 (Array index 2)
+        setP(3, leaders[2]);
     }
 
     // ======================================
