@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V11: Final Fix</title>
+    <title>Math Arena V12: Realtime Fix</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -26,13 +26,12 @@
         /* 按鈕通用 */
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
 
-        /* 頭像選擇 (修正：半透明背色) */
+        /* 頭像選擇 (半透明背色) */
         .avatar-btn { 
             @apply text-4xl p-2 rounded-xl border-2 border-transparent transition-all cursor-pointer grayscale opacity-60; 
         }
         .avatar-btn.selected { 
             @apply bg-cyan-500/30 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.3)]; 
-            /* bg-cyan-500/30 即為半透明青色背景 */
         }
 
         /* 踢人按鈕 */
@@ -43,7 +42,7 @@
         /* 頒獎台動畫 */
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .podium-enter { animation: podium-up 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        .podium-hidden { display: none !important; }
+        .podium-hidden { display: none !important; } /* 強制隱藏 */
     </style>
 </head>
 <body class="h-screen flex flex-col items-center justify-center bg-[#050510]">
@@ -68,7 +67,7 @@
                     <label class="block text-slate-400 text-sm mb-2 font-bold">MODE</label>
                     <div class="grid grid-cols-2 gap-2">
                         <button id="btn-mode-score" class="border border-slate-600 text-slate-400 py-2 rounded" onclick="setMode('score')">🏁 Score Race</button>
-                        <button id="btn-mode-time" class="border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" onclick="setMode('time')">⏱️ Timer</button>
+                        <button id="btn-mode-time" class="border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" onclick="setMode('time')">⏱️ Timer Mode</button>
                     </div>
                 </div>
                 <div class="mb-6">
@@ -84,8 +83,8 @@
     <div id="view-host-game" class="w-full h-full p-4 hidden flex-col bg-slate-950 relative">
         <div class="flex justify-between items-center mb-4 px-4 py-2 bg-slate-900/80 rounded-lg border border-slate-700">
             <div class="font-display text-2xl italic text-slate-300">LIVE RANKING</div>
-            <div class="text-4xl font-mono font-bold text-cyan-400 neon-text" id="host-game-timer">00:00</div>
-            <div class="text-sm text-slate-500 font-bold" id="host-target-display">TARGET</div>
+            <div class="text-4xl font-mono font-bold text-cyan-400 neon-text" id="host-timer-display">00:00</div>
+            <div class="text-sm text-slate-500 font-bold" id="host-target-display">TIME LEFT</div>
         </div>
         <div class="flex-1 relative mx-4 rounded-xl bg-slate-900/30 border border-slate-800 overflow-y-auto" id="lanes-container"></div>
         
@@ -120,12 +119,12 @@
         <div id="game-freeze-overlay" class="absolute inset-0 bg-slate-950/95 z-40 hidden flex flex-col items-center justify-center">
             <div class="text-6xl mb-4">🛑</div>
             <h2 class="text-4xl font-display text-red-500 mb-2 neon-text">TIME UP!</h2>
-            <p class="text-white animate-pulse">Calculating Winners...</p>
+            <p class="text-white animate-pulse">Waiting for Host...</p>
         </div>
 
         <div class="h-12 bg-slate-950 border-b border-slate-800 flex justify-between items-center px-4">
             <div class="text-cyan-400 font-bold" id="client-score">0 PTS</div>
-            <div class="text-slate-400 font-mono" id="client-timer">--:--</div>
+            <div class="text-slate-400 font-mono" id="client-timer-display">--:--</div>
         </div>
         <div class="flex-1 relative flex justify-center items-center" id="canvas-container">
             <canvas id="gameCanvas"></canvas>
@@ -156,7 +155,7 @@
     <div id="view-podium" class="text-center w-full hidden z-[100] bg-slate-950 absolute inset-0 flex flex-col items-center justify-center">
         <h1 class="text-5xl font-display text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-12 neon-gold z-10">CHAMPIONS</h1>
         <div class="flex items-end justify-center space-x-2 md:space-x-4 mb-12 w-full max-w-3xl px-4 z-10" id="podium-container">
-            <div id="podium-2" class="flex flex-col items-center podium-enter opacity-0" style="animation-delay: 0.5s">
+            <div id="podium-2" class="flex flex-col items-center podium-hidden opacity-0" style="animation-delay: 0.5s">
                 <div class="text-4xl mb-2" id="p2-avatar"></div>
                 <div class="text-white font-bold text-sm" id="p2-name"></div>
                 <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg">
@@ -172,7 +171,7 @@
                 </div>
                 <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score"></div>
             </div>
-            <div id="podium-3" class="flex flex-col items-center podium-enter opacity-0" style="animation-delay: 1.0s">
+            <div id="podium-3" class="flex flex-col items-center podium-hidden opacity-0" style="animation-delay: 1.0s">
                 <div class="text-4xl mb-2" id="p3-avatar"></div>
                 <div class="text-white font-bold text-sm" id="p3-name"></div>
                 <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg">
@@ -185,9 +184,6 @@
     </div>
 
 <script>
-    // ======================================
-    // Firebase 設定
-    // ======================================
     const firebaseConfig = {
         apiKey: "AIzaSyAYnQB2o5cPn42RiNAik7537ihduICJwdQ",
         authDomain: "fwftmath.firebaseapp.com",
@@ -197,17 +193,12 @@
         appId: "1:70090299689:web:ae300db1f79a3eda62bf38"
     };
     const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼'];
-    
     let app, db;
-    try { app = firebase.initializeApp(firebaseConfig); db = firebase.database(); } 
-    catch(e) { console.error("Firebase Init Error", e); }
+    try { app = firebase.initializeApp(firebaseConfig); db = firebase.database(); } catch(e){}
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playTone(f,t,d){if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d);}
 
-    // ======================================
-    // 狀態管理
-    // ======================================
     const urlParams = new URLSearchParams(window.location.search);
     let state = {
         role: 'none', gameId: urlParams.get('gid'),
@@ -215,8 +206,11 @@
         playerName: 'Guest', avatar: '',
         score: 0, active: false,
         settings: { mode: 'time', target: 60 },
-        q: null, input: ''
+        q: null, input: '',
+        endTime: 0
     };
+
+    let localTimerInterval = null; // 用於本地倒數動畫
 
     const views = ['view-menu','view-host-lobby','view-host-game','view-join','view-avatar-select','view-student-wait','view-game','view-podium'];
     function showView(id) {
@@ -228,22 +222,19 @@
 
     window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
 
-    // ======================================
-    // 📡 HOST (老師端) 邏輯
-    // ======================================
+    // ==========================================
+    // HOST 邏輯
+    // ==========================================
     function setupHost() {
         state.role = 'host';
         const ref = db.ref('games').push();
         state.gameId = ref.key;
-        
-        // 初始化遊戲 (默認為計時模式)
         setMode('time');
         ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
         
         showView('view-host-lobby');
         new QRCode(document.getElementById("qrcode"), { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
         
-        // 監聽玩家加入 + 渲染踢人按鈕
         db.ref(`games/${state.gameId}/players`).on('value', snap => {
             const grid = document.getElementById('player-grid');
             grid.innerHTML = '';
@@ -253,18 +244,12 @@
                 const p = c.val();
                 const div = document.createElement('div');
                 div.className = "bg-slate-800 px-3 py-2 rounded-lg border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]";
-                // 這裡顯示頭像、名字，並加上踢人按鈕 (Kick Button)
-                div.innerHTML = `
-                    <span class="text-xl">${p.avatar}</span>
-                    <span class="font-bold text-white">${p.name}</span>
-                    <button onclick="kickPlayer('${c.key}')" class="kick-btn" title="Kick Player">❌</button>
-                `;
+                div.innerHTML = `<span class="text-xl">${p.avatar}</span><span class="font-bold text-white">${p.name}</span><button onclick="kickPlayer('${c.key}')" class="kick-btn">❌</button>`;
                 grid.appendChild(div);
             });
             document.getElementById('join-count-display').innerText = `${count} PLAYERS`;
         });
 
-        // 設定滑桿
         const slider = document.getElementById('setting-slider');
         slider.oninput = (e) => {
             state.settings.target = parseInt(e.target.value);
@@ -273,38 +258,29 @@
         };
     }
 
-    // 🦶 踢人函數 (Host Kick Function)
-    window.kickPlayer = (pid) => {
-        if(confirm("Kick this player?")) {
-            db.ref(`games/${state.gameId}/players/${pid}`).remove();
-        }
-    };
+    window.kickPlayer = (pid) => { if(confirm("Kick player?")) db.ref(`games/${state.gameId}/players/${pid}`).remove(); };
 
     function setMode(mode) {
         state.settings.mode = mode;
         const slider = document.getElementById('setting-slider');
-        // 更新 UI 樣式
         document.getElementById('btn-mode-score').className = mode==='score' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
         document.getElementById('btn-mode-time').className = mode==='time' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
-        
-        if(mode==='score') {
-            document.getElementById('setting-label').innerText = "TARGET SCORE";
-            slider.min=500; slider.max=5000; slider.step=100; slider.value=1000;
-        } else {
-            document.getElementById('setting-label').innerText = "TIME LIMIT";
-            slider.min=30; slider.max=300; slider.step=10; slider.value=60;
-        }
+        if(mode==='score') { document.getElementById('setting-label').innerText="TARGET SCORE"; slider.min=500; slider.max=5000; slider.step=100; slider.value=1000; } 
+        else { document.getElementById('setting-label').innerText="TIME LIMIT"; slider.min=30; slider.max=300; slider.step=10; slider.value=60; }
         slider.oninput({target:slider});
     }
 
     function hostStartGame() {
         const updateData = { status: 'playing', startTime: Date.now() };
         if(state.settings.mode === 'time') {
-            updateData.endTime = Date.now() + (state.settings.target * 1000);
+            state.endTime = Date.now() + (state.settings.target * 1000);
+            updateData.endTime = state.endTime;
         }
         db.ref(`games/${state.gameId}`).update(updateData);
         showView('view-host-game');
         document.getElementById('host-target-display').innerText = state.settings.mode==='score' ? `TARGET: ${state.settings.target}` : "TIME LEFT";
+        
+        startLocalTicker(state.settings.mode === 'time' ? state.endTime : null, 'host-timer-display');
         monitorGameLoop();
     }
 
@@ -314,37 +290,19 @@
             const game = snap.val();
             if(!game) return;
 
-            // 1. 計時與結束邏輯
             if (game.status === 'playing') {
-                let timeStr = "00:00";
-                
-                if (game.settings.mode === 'time') {
-                    // 計時模式：倒數
-                    let left = Math.max(0, Math.ceil((game.endTime - Date.now())/1000));
-                    timeStr = `${Math.floor(left/60)}:${(left%60).toString().padStart(2,'0')}`;
-                    
-                    // ⏱️ 關鍵修正：當 HOST 倒數至 0，HOST 負責結算結果 (Host Authority)
-                    if(left <= 0 && state.role === 'host') {
-                        executeGameFinish(); // 觸發結算
-                    }
-                } else {
-                    // 競速模式：正計時
-                    let elapsed = Math.floor((Date.now() - game.startTime)/1000);
-                    timeStr = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`;
+                // Host 負責檢查時間到
+                if (game.settings.mode === 'time' && state.role === 'host') {
+                    const left = Math.ceil((game.endTime - Date.now())/1000);
+                    if(left <= 0) executeGameFinish();
                 }
-                document.getElementById('host-game-timer').innerText = timeStr;
-            } 
-            else if (game.status === 'results') {
-                // 如果收到 results 狀態，顯示頒獎台
+            } else if (game.status === 'results') {
                 showPodium(game.leaderboard);
-                gameRef.off(); // 停止監聽
+                gameRef.off();
             }
 
-            // 2. 渲染玩家進度
             if(game.players) {
                 const players = Object.values(game.players).sort((a,b)=>(b.score||0)-(a.score||0));
-                
-                // 競速模式贏家判斷
                 if (state.role==='host' && game.status==='playing' && game.settings.mode==='score') {
                     if(players[0].score >= game.settings.target) executeGameFinish();
                 }
@@ -353,27 +311,28 @@
         });
     }
 
-    // 🏁 結算邏輯 (Host Only)
     function executeGameFinish() {
-        // 1. 設置狀態為 finished (凍結客戶端)
-        db.ref(`games/${state.gameId}`).update({ status: 'finished' });
+        // 鎖定狀態
+        db.ref(`games/${state.gameId}`).update({ status: 'calculating' });
         document.getElementById('host-status-msg').style.opacity = 1;
 
-        // 2. 計算排名 (高分者勝)
-        db.ref(`games/${state.gameId}/players`).once('value', s => {
-            const arr = [];
-            s.forEach(c => arr.push(c.val()));
-            // 排序：分數高 -> 低
-            arr.sort((a,b) => (b.score||0) - (a.score||0));
-            
-            // 3. 延遲 2 秒展示 "Time Up" 後，寫入結果並推送到頒獎台
-            setTimeout(() => {
+        // 停止計時器
+        if(localTimerInterval) clearInterval(localTimerInterval);
+
+        // 統一計算排名
+        setTimeout(() => {
+            db.ref(`games/${state.gameId}/players`).once('value', s => {
+                const arr = [];
+                s.forEach(c => arr.push(c.val()));
+                // 強制數字比較，避免字串排序錯誤
+                arr.sort((a,b) => (parseInt(b.score)||0) - (parseInt(a.score)||0));
+                
                 db.ref(`games/${state.gameId}`).update({ 
                     status: 'results', 
-                    leaderboard: arr.slice(0, 3) // 取前三名
+                    leaderboard: arr.slice(0, 3) // 取前三
                 });
-            }, 2000);
-        });
+            });
+        }, 1500); // 緩衝時間確保最後分數上傳
     }
 
     function renderLanes(players, target, mode) {
@@ -405,26 +364,21 @@
         });
     }
 
-    // ======================================
-    // 📱 CLIENT (學生端) 邏輯
-    // ======================================
+    // ==========================================
+    // CLIENT 邏輯
+    // ==========================================
     function goToAvatarSelect() {
         const name = document.getElementById('player-name').value.trim();
         if(!name) return alert("Enter Name!");
         state.playerName = name;
-        
         const grid = document.getElementById('avatar-grid');
         grid.innerHTML = '';
         AVATAR_OPTIONS.forEach(av => {
             const btn = document.createElement('div');
             btn.className = 'avatar-btn';
             btn.innerText = av;
-            
-            // 🦁 頭像選擇邏輯
             btn.onclick = () => {
-                // 移除其他按鈕的 selected
                 document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
-                // 為當前按鈕添加 selected (CSS中定義了半透明背色)
                 btn.classList.add('selected');
                 state.avatar = av;
                 document.getElementById('btn-join-confirm').disabled = false;
@@ -435,24 +389,12 @@
     }
 
     function confirmJoin() {
-        if(!state.avatar) return;
         const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
-        
-        // 寫入 Firebase
-        playerRef.set({
-            name: state.playerName, score: 0, avatar: state.avatar
-        });
-
-        // 監聽是否被 Host 踢出 (Kick Listener)
-        playerRef.on('value', snap => {
-            if(!snap.exists() && state.role !== 'host') {
-                alert("You have been removed by the host.");
-                location.reload();
-            }
-        });
+        playerRef.set({ name: state.playerName, score: 0, avatar: state.avatar });
+        playerRef.on('value', snap => { if(!snap.exists() && state.role !== 'host') location.reload(); });
 
         showView('view-student-wait');
-        document.getElementById('my-final-avatar').innerText = state.avatar; // 顯示選擇的頭像
+        document.getElementById('my-final-avatar').innerText = state.avatar;
         document.getElementById('my-final-name').innerText = state.playerName;
 
         db.ref(`games/${state.gameId}`).on('value', snap => {
@@ -462,15 +404,17 @@
             
             if (game.status === 'playing') {
                 document.getElementById('game-freeze-overlay').classList.add('hidden');
-                if (!state.active) startGameClient();
-                // 學生端只顯示時間，不負責倒數結束邏輯
-                if(game.settings.mode === 'time') {
-                    let left = Math.max(0, Math.ceil((game.endTime - Date.now())/1000));
-                    document.getElementById('client-timer').innerText = `${Math.floor(left/60)}:${(left%60).toString().padStart(2,'0')}`;
+                if (!state.active) {
+                    state.active = true;
+                    showView('view-game');
+                    generateQuestion();
+                    // 啟動客戶端本地倒數
+                    startLocalTicker(game.endTime, 'client-timer-display');
                 }
             } 
-            else if (game.status === 'finished') {
+            else if (game.status === 'calculating' || game.status === 'finished') {
                 state.active = false;
+                if(localTimerInterval) clearInterval(localTimerInterval);
                 document.getElementById('game-freeze-overlay').classList.remove('hidden');
             }
             else if (game.status === 'results') {
@@ -479,20 +423,47 @@
         });
     }
 
-    function startGameClient() {
-        state.active = true;
-        showView('view-game');
-        generateQuestion();
+    // ==========================================
+    // 共用計時器 (解決倒數卡頓核心)
+    // ==========================================
+    function startLocalTicker(endTime, elementId) {
+        if(localTimerInterval) clearInterval(localTimerInterval);
+        const el = document.getElementById(elementId);
+        
+        // 立即執行一次
+        updateTime();
+        
+        localTimerInterval = setInterval(updateTime, 200); // 每0.2秒刷新UI，保證流暢
+
+        function updateTime() {
+            if(!endTime) {
+                // 競速模式 (計分)
+                el.innerText = "RACE";
+                return;
+            }
+            const now = Date.now();
+            const left = Math.ceil((endTime - now) / 1000);
+            
+            if(left <= 0) {
+                el.innerText = "00:00";
+                if(state.role !== 'host') clearInterval(localTimerInterval); // Client 停，Host 繼續跑到切換狀態
+                return;
+            }
+            const m = Math.floor(left / 60);
+            const s = left % 60;
+            el.innerText = `${m}:${s.toString().padStart(2, '0')}`;
+        }
     }
 
-    // ======================================
-    // 🏆 PODIUM (頒獎台) 邏輯
-    // ======================================
+    // ==========================================
+    // 頒獎台 (修正邏輯)
+    // ==========================================
     function showPodium(leaders) {
         state.active = false;
+        if(localTimerInterval) clearInterval(localTimerInterval);
         showView('view-podium');
         
-        // 慶祝特效
+        // 撒花
         const end = Date.now() + 3000;
         (function frame() {
             confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 } });
@@ -500,39 +471,31 @@
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
 
-        // 輔助函數：填入資料
         const setP = (rank, p) => {
-            if(!p) return;
+            const el = document.getElementById(`podium-${rank}`);
+            if(!p) {
+                el.classList.add('podium-hidden'); // 沒有人就隱藏
+                el.classList.remove('podium-enter');
+                return;
+            }
+            el.classList.remove('podium-hidden'); // 有人就顯示
+            el.classList.add('podium-enter');
             document.getElementById(`p${rank}-name`).innerText = p.name;
-            document.getElementById(`p${rank}-avatar`).innerText = p.avatar; // 頭像同步
+            document.getElementById(`p${rank}-avatar`).innerText = p.avatar;
             document.getElementById(`p${rank}-score`).innerText = p.score;
         };
 
-        if(leaders && leaders.length > 0) {
-            // 1st Place (永遠顯示)
-            setP(1, leaders[0]);
-            
-            // 2nd Place (有第二名才顯示)
-            if(leaders.length >= 2) { 
-                setP(2, leaders[1]); 
-                document.getElementById('podium-2').classList.remove('podium-hidden'); 
-            } else {
-                document.getElementById('podium-2').classList.add('podium-hidden');
-            }
-            
-            // 3rd Place (有第三名才顯示)
-            if(leaders.length >= 3) { 
-                setP(3, leaders[2]); 
-                document.getElementById('podium-3').classList.remove('podium-hidden'); 
-            } else {
-                document.getElementById('podium-3').classList.add('podium-hidden');
-            }
-        }
+        // 安全處理 leaderboard 為空的情況
+        if(!leaders) leaders = [];
+
+        setP(1, leaders[0]);
+        setP(2, leaders[1]);
+        setP(3, leaders[2]);
     }
 
-    // ======================================
-    // 🧠 數學題目與輸入
-    // ======================================
+    // ==========================================
+    // 遊戲題目邏輯
+    // ==========================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     function resizeCanvas() {
@@ -548,7 +511,6 @@
         const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
         let type = 'rect';
         if(state.score > 300) type = Math.random()>0.5 ? 'tri' : 'rect';
-        
         let q = { type, ans: 0 };
         if (type === 'rect') {
             q.w = r(5, 12); q.h = r(4, 9); q.ans = q.w * q.h;
@@ -568,7 +530,6 @@
         ctx.clearRect(0,0,w,h);
         ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(34,211,238,0.1)';
         ctx.font = "bold 20px Roboto Mono"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        
         if(state.q.type === 'rect') {
             const hw=state.q.w/2*s, hh=state.q.h/2*s;
             ctx.beginPath(); ctx.rect(cx-hw, cy-hh, state.q.w*s, state.q.h*s); ctx.fill(); ctx.stroke();
