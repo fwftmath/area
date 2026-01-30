@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亭園小店 - 網上版</title>
+    <!-- 引入 React 和 ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- 引入 Babel 用於解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        .draggable { cursor: grab; touch-action: none; }
+        .draggable:active { cursor: grabbing; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icon 組件 (為了單一檔案運作，手動定義 SVG) ---
+        const Play = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        );
+        const RotateCcw = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><path d="M3 3v9h9"></path></svg>
+        );
+        const Check = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
+        );
+        const ArrowRight = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        );
+
+        // --- 遊戲數據 ---
+        const ORIGINAL_LEVELS = [
+            {
+                id: 1,
+                title: "訂單: 二手漫畫",
+                desc: "小明用 $40 買入一本舊漫畫，閱讀後以 $50 賣給朋友。",
+                cost: 40,
+                price: 50,
+                profit: 10,
+                answer: 25
+            },
+            {
+                id: 2,
+                title: "訂單: 檸檬茶",
+                desc: "製作一杯檸檬茶的材料費是 $4，店主將它賣 $5。",
+                cost: 4,
+                price: 5,
+                profit: 1,
+                answer: 25
+            },
+            {
+                id: 3,
+                title: "訂單: 原子筆",
+                desc: "文具店以 $10 購入這支原子筆，並標價 $15 出售。",
+                cost: 10,
+                price: 15,
+                profit: 5,
+                answer: 50
+            },
+            {
+                id: 4,
+                title: "訂單: 模型車",
+                desc: "模型店老闆用 $80 入貨這架模型車，最後以 $100 售出。",
+                cost: 80,
+                price: 100,
+                profit: 20,
+                answer: 25
+            },
+            {
+                id: 5,
+                title: "訂單: 限量波鞋",
+                desc: "這對波鞋當初買回來用了 $500，現在有人願意出 $600 買走。",
+                cost: 500,
+                price: 600,
+                profit: 100,
+                answer: 20
+            }
+        ];
+
+        // --- 工具函數 ---
+        const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        };
+
+        // --- 組件定義 ---
+        const NumberCard = ({ value, onClick, isSelected, className = "" }) => {
+            return (
+                <div 
+                    onClick={onClick}
+                    className={`
+                        bg-white border-2 rounded-lg p-3 m-2 
+                        flex flex-col items-center justify-center 
+                        w-24 h-24 cursor-pointer transition-all transform hover:scale-105
+                        ${isSelected ? 'border-blue-500 ring-4 ring-blue-200 scale-105 shadow-xl' : 'border-gray-300 shadow-md'}
+                        ${className}
+                    `}
+                >
+                    <span className="text-xs font-bold uppercase mb-1 text-gray-400">
+                        金額
+                    </span>
+                    <span className="text-2xl font-bold text-gray-800">${value}</span>
+                </div>
+            );
+        };
+
+        const Slot = ({ label, icon, value, onDrop, active, hint }) => {
+            return (
+                <div 
+                    onClick={onDrop}
+                    className={`
+                        flex flex-col items-center justify-center 
+                        border-dashed border-4 rounded-xl p-4 m-2 
+                        w-36 h-48 transition-colors
+                        ${active ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 border-gray-300'}
+                        cursor-pointer relative
+                    `}
+                >
+                    {value ? (
+                        <NumberCard value={value} className="pointer-events-none" />
+                    ) : (
+                        <>
+                            <div className="text-3xl mb-2 opacity-50 text-gray-600">{icon}</div>
+                            <span className="font-bold text-gray-700 text-center text-lg">{label}</span>
+                            {hint && <span className="text-sm text-gray-400 mt-2 font-normal text-center">{hint}</span>}
+                        </>
+                    )}
+                </div>
+            );
+        };
+
+        const ProgressBar = ({ current, total }) => (
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${(current / total) * 100}%` }}></div>
+            </div>
+        );
+
+        // --- 主應用程式 ---
+        const App = () => {
+            const [gameState, setGameState] = useState('intro');
+            const [gameLevels, setGameLevels] = useState(ORIGINAL_LEVELS);
+            const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
+            const [step, setStep] = useState(1); 
+            const [score, setScore] = useState(0);
+            const [feedback, setFeedback] = useState("");
+            const [shake, setShake] = useState(false);
+            const [shuffledOptions, setShuffledOptions] = useState([]);
+
+            const [selectedCard, setSelectedCard] = useState(null); 
+            const [slots, setSlots] = useState({
+                cost: null,
+                price: null,
+                numerator: null,
+                denominator: null
+            });
+            const [inputProfit, setInputProfit] = useState("");
+            const [inputPercent, setInputPercent] = useState("");
+
+            const currentLevel = gameLevels[currentLevelIdx];
+
+            const startGame = () => {
+                setGameLevels(shuffleArray(ORIGINAL_LEVELS));
+                setCurrentLevelIdx(0);
+                setScore(0);
+                setGameState('playing');
+                resetLevelState(1);
+            };
+
+            useEffect(() => {
+                if (!currentLevel) return;
+
+                if (step === 1) {
+                    const options = [
+                        { value: currentLevel.cost, type: 'cost' },
+                        { value: currentLevel.price, type: 'price' }
+                    ];
+                    setShuffledOptions(shuffleArray(options));
+                } else if (step === 3) {
+                    const options = [
+                        { value: currentLevel.profit, type: 'profit' },
+                        { value: currentLevel.cost, type: 'cost' },
+                        { value: currentLevel.price, type: 'price' }
+                    ];
+                    setShuffledOptions(shuffleArray(options));
+                }
+            }, [step, currentLevel]);
+
+            const resetLevelState = (newStep = 1) => {
+                setStep(newStep);
+                setSlots({ cost: null, price: null, numerator: null, denominator: null });
+                setSelectedCard(null);
+                setInputProfit("");
+                setInputPercent("");
+                setFeedback("");
+            };
+
+            const handleCardClick = (card) => {
+                setSelectedCard(card);
+                setFeedback("請點擊上方的格子將卡片放入");
+            };
+
+            const handleSlotClick = (slotName) => {
+                if (!selectedCard) {
+                    setFeedback("請先點擊下方的一張數字卡！");
+                    triggerShake();
+                    return;
+                }
+
+                if (step === 1) {
+                    if (slotName === 'cost' && selectedCard.type !== 'cost') {
+                         setFeedback("❌ 這不是成本喔！提示：成本是原本付出的錢。");
+                         triggerShake();
+                         return;
+                    }
+                    if (slotName === 'price' && selectedCard.type !== 'price') {
+                         setFeedback("❌ 這不是售價喔！提示：售價是後來收回的錢。");
+                         triggerShake();
+                         return;
+                    }
+                    setSlots(prev => ({ ...prev, [slotName]: selectedCard.value }));
+                    setSelectedCard(null);
+                    setFeedback("");
+                }
+
+                if (step === 3) {
+                     if (slotName === 'numerator') {
+                         if (selectedCard.type !== 'profit') {
+                             setFeedback("❌ 分子應該放我們剛剛算出來的「盈利」！");
+                             triggerShake();
+                             return;
+                         }
+                     }
+                     if (slotName === 'denominator') {
+                         if (selectedCard.type === 'price') {
+                             setFeedback("❌ 哎呀！你放了「售價」。分母一定要是「成本」(原本付出的錢)！");
+                             triggerShake();
+                             return;
+                         }
+                         if (selectedCard.type !== 'cost') {
+                             setFeedback("❌ 錯誤！分母一定要放「成本」(原值)！");
+                             triggerShake();
+                             return;
+                         }
+                     }
+                     setSlots(prev => ({ ...prev, [slotName]: selectedCard.value }));
+                     setSelectedCard(null);
+                     setFeedback("");
+                }
+            };
+
+            const triggerShake = () => {
+                setShake(true);
+                setTimeout(() => setShake(false), 500);
+            };
+
+            useEffect(() => {
+                if (step === 1 && slots.cost && slots.price) {
+                    setTimeout(() => {
+                        setStep(2);
+                        setFeedback("🎉 分類正確！現在來算算賺了多少錢。");
+                    }, 800);
+                }
+                if (step === 3 && slots.numerator && slots.denominator) {
+                     setTimeout(() => {
+                        setStep(4);
+                        setFeedback("🎉 公式擺對了！最後一步算出百分率。");
+                    }, 800);
+                }
+            }, [slots, step]);
+
+            const checkProfit = () => {
+                if (parseInt(inputProfit) === currentLevel.profit) {
+                    setFeedback("✅ 算對了！現在進入最重要的步驟...");
+                    setTimeout(() => setStep(3), 1000);
+                } else {
+                    setFeedback("❌ 算錯了，試試用 售價 減去 成本？");
+                    triggerShake();
+                }
+            };
+
+            const checkFinalAnswer = () => {
+                if (parseInt(inputPercent) === currentLevel.answer) {
+                    setScore(s => s + 100);
+                    setFeedback("🏆 太棒了！這一單生意完成了！");
+                    setTimeout(() => {
+                        if (currentLevelIdx < gameLevels.length - 1) {
+                            setCurrentLevelIdx(prev => prev + 1);
+                            resetLevelState(1);
+                        } else {
+                            setGameState('summary');
+                        }
+                    }, 2000);
+                } else {
+                    setFeedback("❌ 再算一次看看？ 盈利 ÷ 成本 × 100%");
+                    triggerShake();
+                }
+            };
+
+            if (gameState === 'intro') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-100 font-sans text-gray-800">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-200">
+                            <div className="text-6xl mb-4">🏭</div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-4">亭園小店</h1>
+                            <p className="text-gray-600 mb-8 leading-relaxed">
+                                歡迎來到亭園小店！<br/>
+                                這裡沒有顏色提示，你需要靠自己分析題目。<br/><br/>
+                                <strong>任務目標：</strong><br/>
+                                從文字中找出 <span className="font-bold underline">成本</span> 與 <span className="font-bold underline">售價</span>，
+                                並準確計算每一單生意的盈利百分率。<br/><br/>
+            
+                            </p>
+                            <button 
+                                onClick={startGame}
+                                className="w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg flex items-center justify-center gap-2"
+                            >
+                                <Play size={20} /> 開始挑戰
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'summary') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-100 font-sans">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-200">
+                            <div className="text-6xl mb-4">🏆</div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-4">恭喜你！</h1>
+                            <p className="text-gray-600 mb-8">
+                                你成功完成了所有挑戰！<br/>
+                                現在你已經能熟練分辨成本與售價了。
+                            </p>
+                            <div className="text-2xl font-bold text-blue-600 mb-8">
+                                總分: {score}
+                            </div>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                className="w-full bg-gray-800 hover:bg-black text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <RotateCcw size={20} /> 再玩一次
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen max-w-4xl mx-auto p-4 flex flex-col font-sans bg-gray-100 text-gray-800">
+                    <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl">🏭</span>
+                            <span className="font-bold text-gray-700">盈利工廠</span>
+                        </div>
+                        <div className="text-gray-600 font-bold">
+                            Level {currentLevelIdx + 1}/{gameLevels.length}
+                        </div>
+                    </div>
+
+                    <ProgressBar current={currentLevelIdx} total={gameLevels.length} />
+
+                    <div className="bg-white p-8 rounded-xl shadow-md mb-6 text-center border-t-4 border-gray-600">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">{currentLevel.title}</h2>
+                        <p className="text-xl text-gray-700 font-medium leading-relaxed">
+                            {currentLevel.desc}
+                        </p>
+                    </div>
+
+                    <div className={`text-center h-8 mb-4 font-bold ${shake ? 'text-red-500 shake' : 'text-blue-600'}`}>
+                        {feedback}
+                    </div>
+
+                    <div className="flex-1 bg-white rounded-xl shadow-lg p-6 relative min-h-[480px] border border-gray-200">
+                        {step === 1 && (
+                            <div className="fade-in">
+                                <h3 className="text-center text-gray-500 font-bold mb-6 border-b pb-2">第一站：找出數值</h3>
+                                <p className="text-center text-gray-400 mb-4 text-sm">請閱讀題目，將正確的金額放入對應的格子</p>
+                                <div className="flex justify-center gap-8 mb-12">
+                                    <Slot 
+                                        label="成本 (Cost)" 
+                                        icon="🛑" 
+                                        hint="原本付出的錢"
+                                        value={slots.cost}
+                                        onDrop={() => handleSlotClick('cost')}
+                                    />
+                                    <Slot 
+                                        label="售價 (Price)" 
+                                        icon="🟢" 
+                                        hint="後來收回的錢"
+                                        value={slots.price}
+                                        onDrop={() => handleSlotClick('price')}
+                                    />
+                                </div>
+                                <div className="flex justify-center gap-4 border-t pt-6 bg-gray-50 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm absolute top-2 left-2">待處理金額</div>
+                                    {shuffledOptions.map((option, idx) => (
+                                        <NumberCard 
+                                            key={idx}
+                                            value={option.value} 
+                                            onClick={() => handleCardClick(option)}
+                                            isSelected={selectedCard?.value === option.value && selectedCard?.type === option.type}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 2 && (
+                            <div className="fade-in text-center">
+                                <h3 className="text-center text-gray-500 font-bold mb-6 border-b pb-2">第二站：計算盈利 (賺了多少?)</h3>
+                                <div className="flex items-center justify-center gap-4 text-2xl font-bold mb-8 flex-wrap">
+                                    <div className="bg-white text-gray-700 p-4 rounded-lg border border-gray-300 shadow-sm">
+                                        <span className="text-xs block text-gray-400 mb-1">售價</span>
+                                        ${currentLevel.price}
+                                    </div>
+                                    <span className="text-gray-400">-</span>
+                                    <div className="bg-white text-gray-700 p-4 rounded-lg border border-gray-300 shadow-sm">
+                                        <span className="text-xs block text-gray-400 mb-1">成本</span>
+                                        ${currentLevel.cost}
+                                    </div>
+                                    <span className="text-gray-400">=</span>
+                                    <div className="bg-blue-50 text-blue-800 p-4 rounded-lg border-2 border-blue-400 flex items-center gap-1 shadow-sm">
+                                        $
+                                        <input 
+                                            type="number" 
+                                            value={inputProfit}
+                                            onChange={(e) => setInputProfit(e.target.value)}
+                                            className="w-24 bg-transparent border-b-2 border-blue-600 text-center focus:outline-none"
+                                            placeholder="?"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={checkProfit}
+                                    className="bg-gray-800 hover:bg-black text-white font-bold py-2 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center gap-2 mx-auto"
+                                >
+                                    <Check size={20} /> 確認盈利
+                                </button>
+                            </div>
+                        )}
+
+                        {step === 3 && (
+                            <div className="fade-in">
+                                <h3 className="text-center text-gray-500 font-bold mb-4 border-b pb-2">第三站：拼砌公式</h3>
+                                <p className="text-center text-sm text-gray-400 mb-6">請將 盈利 和 成本 放到正確位置</p>
+                                <div className="flex items-center justify-center gap-6 mb-8">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Slot 
+                                            label="盈利" 
+                                            icon="💰" 
+                                            hint="賺到的錢"
+                                            value={slots.numerator}
+                                            onDrop={() => handleSlotClick('numerator')}
+                                        />
+                                        <div className="h-1 w-48 bg-gray-800 rounded"></div>
+                                        <Slot 
+                                            label="成本" 
+                                            icon="🛑" 
+                                            hint="一定要放原值！"
+                                            value={slots.denominator}
+                                            onDrop={() => handleSlotClick('denominator')}
+                                        />
+                                    </div>
+                                    <div className="text-5xl font-bold text-gray-600">
+                                        × 100%
+                                    </div>
+                                </div>
+                                <div className="flex justify-center gap-4 border-t pt-6 bg-gray-50 rounded-lg p-4">
+                                    {shuffledOptions.map((option, idx) => (
+                                        <NumberCard 
+                                            key={idx}
+                                            value={option.value} 
+                                            onClick={() => handleCardClick(option)}
+                                            isSelected={selectedCard?.value === option.value && selectedCard?.type === option.type}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 4 && (
+                            <div className="fade-in text-center">
+                                <h3 className="text-center text-gray-500 font-bold mb-6 border-b pb-2">最終計算</h3>
+                                <div className="text-3xl font-bold text-gray-800 mb-10 bg-gray-50 p-6 rounded-xl inline-block border border-gray-200">
+                                    <span className="text-blue-600">{currentLevel.profit}</span>
+                                    <span className="mx-3 text-gray-400">÷</span>
+                                    <span className="text-gray-800">{currentLevel.cost}</span>
+                                    <span className="mx-3 text-gray-400">× 100% = </span>
+                                    <div className="inline-block relative">
+                                        <input 
+                                            type="number" 
+                                            value={inputPercent}
+                                            onChange={(e) => setInputPercent(e.target.value)}
+                                            className="w-28 bg-white border-2 border-gray-300 focus:border-blue-500 text-center focus:outline-none p-2 rounded-lg"
+                                            placeholder="?"
+                                            autoFocus
+                                        />
+                                        <span className="absolute right-[-25px] bottom-3 text-gray-500 text-xl">%</span>
+                                    </div>
+                                </div>
+                                <br/>
+                                <button 
+                                    onClick={checkFinalAnswer}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-full shadow-lg transform transition hover:scale-105 text-lg flex items-center gap-2 mx-auto"
+                                >
+                                    完成訂單 <ArrowRight size={20} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="text-center text-gray-400 text-xs mt-4">
+                        亭園小店 v1.3 (Google Site 版) | 數學科組
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
