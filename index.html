@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V14: Stable Fix</title>
+    <title>Math Arena V15: Ranked & Sync</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -23,8 +23,12 @@
         .progress-bar { transition: width 0.3s linear; }
         
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
-        .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-transparent transition-all cursor-pointer grayscale opacity-60; }
-        .avatar-btn.selected { @apply bg-cyan-500/30 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.3)]; }
+        
+        /* 頭像樣式升級 */
+        .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-slate-700 transition-all cursor-pointer grayscale opacity-70 bg-slate-800; }
+        .avatar-btn.selected { @apply bg-cyan-900/80 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_20px_rgba(34,211,238,0.6)] z-10; }
+        .avatar-btn.taken { @apply opacity-20 cursor-not-allowed border-red-900 bg-slate-900 scale-90 grayscale; }
+
         .kick-btn { @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors; }
 
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -74,7 +78,7 @@
         </div>
         <div class="flex-1 relative mx-4 rounded-xl bg-slate-900/30 border border-slate-800 overflow-y-auto" id="lanes-container"></div>
         <div id="host-status-msg" class="absolute bottom-10 left-0 w-full text-center pointer-events-none opacity-0 transition-opacity duration-500">
-            <span class="bg-black/80 text-yellow-400 px-6 py-2 rounded-full text-xl font-bold border border-yellow-500">CALCULATING RESULTS...</span>
+            <span class="bg-black/80 text-yellow-400 px-6 py-2 rounded-full text-xl font-bold border border-yellow-500 shadow-lg">🛑 TIME UP - CALCULATING...</span>
         </div>
     </div>
 
@@ -86,6 +90,7 @@
 
     <div id="view-avatar-select" class="text-center p-6 max-w-md w-full hidden z-50 flex-col">
         <h2 class="text-xl font-bold mb-4 text-cyan-400">SELECT AVATAR</h2>
+        <p class="text-xs text-slate-500 mb-4">Gray icons are taken by others</p>
         <div class="grid grid-cols-4 gap-4 mb-8" id="avatar-grid"></div>
         <button onclick="confirmJoin()" class="btn-primary" id="btn-join-confirm" disabled>READY</button>
         <button onclick="showView('view-join')" class="text-slate-500 underline mt-2">BACK</button>
@@ -104,7 +109,7 @@
         <div id="game-freeze-overlay" class="absolute inset-0 bg-slate-950/95 z-40 hidden flex flex-col items-center justify-center">
             <div class="text-6xl mb-4">🛑</div>
             <h2 class="text-4xl font-display text-red-500 mb-2 neon-text">TIME UP!</h2>
-            <p class="text-white animate-pulse">Waiting for Host...</p>
+            <p class="text-white animate-pulse">Calculating Results...</p>
         </div>
         <div class="h-12 bg-slate-950 border-b border-slate-800 flex justify-between items-center px-4">
             <div class="text-cyan-400 font-bold" id="client-score">0 PTS</div>
@@ -188,12 +193,11 @@
                 if(statusEl) statusEl.className = snap.val() ? "text-xs text-green-400 font-bold mb-4" : "text-xs text-orange-400 font-bold mb-4";
             });
         } catch (e) {
-            if(statusEl) statusEl.innerText = "❌ ERROR";
             console.error(e);
         }
     });
 
-    const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼'];
+    const AVATAR_OPTIONS = ['🐯','🐰','🦁','🦄','🦖','👽','🤖','🐼','🦊','🐨','🐮','🐷'];
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playTone(f,t,d){if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d);}
 
@@ -219,33 +223,24 @@
     window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
 
     // ======================================
-    // HOST LOGIC (FIXED)
+    // HOST LOGIC (UPDATED)
     // ======================================
     function setupHost() {
         if (!db) return alert("Database not ready.");
         state.role = 'host';
-        
-        // 1. 先顯示畫面，確保 DOM 元素可見
         showView('view-host-lobby');
-
-        // 2. 綁定滑桿事件 (先綁定，再設定模式)
         const slider = document.getElementById('setting-slider');
         slider.oninput = () => updateSettingsDisplay();
-
-        // 3. 設定初始模式
         setMode('time');
 
-        // 4. 建立遊戲
         const ref = db.ref('games').push();
         state.gameId = ref.key;
         ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
         
-        // 5. QR Code
         const qrDiv = document.getElementById("qrcode");
         qrDiv.innerHTML = "";
         new QRCode(qrDiv, { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
         
-        // 6. 監聽玩家
         db.ref(`games/${state.gameId}/players`).on('value', snap => {
             const grid = document.getElementById('player-grid');
             grid.innerHTML = '';
@@ -261,7 +256,6 @@
 
     window.kickPlayer = (pid) => { if(confirm("Kick player?")) db.ref(`games/${state.gameId}/players/${pid}`).remove(); };
 
-    // 獨立的更新顯示函式，防止調用順序錯誤
     function updateSettingsDisplay() {
         const slider = document.getElementById('setting-slider');
         state.settings.target = parseInt(slider.value);
@@ -272,21 +266,13 @@
     function setMode(mode) {
         state.settings.mode = mode;
         const slider = document.getElementById('setting-slider');
-        
-        // 更新按鈕樣式
         document.getElementById('btn-mode-score').className = mode==='score' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
         document.getElementById('btn-mode-time').className = mode==='time' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
-        
-        // 更新滑桿範圍
         if(mode==='score') { 
-            document.getElementById('setting-label').innerText="TARGET SCORE"; 
-            slider.min=500; slider.max=5000; slider.step=100; slider.value=1000; 
+            document.getElementById('setting-label').innerText="TARGET SCORE"; slider.min=500; slider.max=5000; slider.step=100; slider.value=1000; 
         } else { 
-            document.getElementById('setting-label').innerText="TIME LIMIT"; 
-            slider.min=30; slider.max=300; slider.step=10; slider.value=60; 
+            document.getElementById('setting-label').innerText="TIME LIMIT"; slider.min=30; slider.max=300; slider.step=10; slider.value=60; 
         }
-        
-        // 安全地呼叫更新，而不是觸發事件
         updateSettingsDisplay();
     }
 
@@ -308,16 +294,23 @@
         gameRef.on('value', snap => {
             const game = snap.val();
             if(!game) return;
-            if (game.status === 'playing') {
-                if (game.settings.mode === 'time' && state.role === 'host') {
-                    if(Math.ceil((game.endTime - Date.now())/1000) <= 0) executeGameFinish();
-                }
-            } else if (game.status === 'results') {
+            
+            // 監控時間結束
+            if (game.status === 'playing' && game.settings.mode === 'time' && state.role === 'host') {
+                const left = Math.ceil((game.endTime - Date.now())/1000);
+                if(left <= 0) executeGameFinish();
+            } 
+            
+            // 監控狀態切換
+            else if (game.status === 'results') {
                 showPodium(game.leaderboard);
                 gameRef.off();
             }
+
+            // 更新 Host 畫面長條圖
             if(game.players) {
                 const players = Object.values(game.players).sort((a,b)=>(b.score||0)-(a.score||0));
+                // 目標分數模式的自動結束
                 if (state.role==='host' && game.status==='playing' && game.settings.mode==='score' && players[0].score >= game.settings.target) executeGameFinish();
                 renderLanes(players, game.settings.target, game.settings.mode);
             }
@@ -325,14 +318,19 @@
     }
 
     function executeGameFinish() {
-        db.ref(`games/${state.gameId}`).update({ status: 'calculating' });
+        // 1. 先設為 finished，讓所有 Client 停止動作
+        db.ref(`games/${state.gameId}`).update({ status: 'finished' });
         document.getElementById('host-status-msg').style.opacity = 1;
         if(localTimerInterval) clearInterval(localTimerInterval);
+
+        // 2. 等待 1.5 秒讓所有分數上傳完畢，再計算
         setTimeout(() => {
             db.ref(`games/${state.gameId}/players`).once('value', s => {
                 const arr = [];
                 s.forEach(c => arr.push(c.val()));
+                // 3. 抓取所有人並排序
                 arr.sort((a,b) => (parseInt(b.score)||0) - (parseInt(a.score)||0));
+                // 4. 寫入排行榜，狀態改為 results
                 db.ref(`games/${state.gameId}`).update({ status: 'results', leaderboard: arr.slice(0, 3) });
             });
         }, 1500);
@@ -360,41 +358,79 @@
     }
 
     // ======================================
-    // CLIENT LOGIC
+    // CLIENT LOGIC (UPDATED: Avatar Sync)
     // ======================================
     function goToAvatarSelect() {
         const name = document.getElementById('player-name').value.trim();
         if(!name) return alert("Enter Name!");
         state.playerName = name;
+        showView('view-avatar-select');
+        
+        // 渲染按鈕
         const grid = document.getElementById('avatar-grid');
         grid.innerHTML = '';
-        AVATAR_OPTIONS.forEach(av => {
+        AVATAR_OPTIONS.forEach((av, idx) => {
             const btn = document.createElement('div');
             btn.className = 'avatar-btn';
+            btn.id = `av-btn-${idx}`;
             btn.innerText = av;
-            btn.onclick = () => {
-                document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                state.avatar = av;
-                document.getElementById('btn-join-confirm').disabled = false;
-            };
+            btn.onclick = () => selectAvatar(av, idx);
             grid.appendChild(btn);
         });
-        showView('view-avatar-select');
+
+        // 監聽哪些頭像被選走了
+        db.ref(`games/${state.gameId}/players`).on('value', snap => {
+            // 重置狀態
+            document.querySelectorAll('.avatar-btn').forEach(b => {
+                if(!b.classList.contains('selected')) {
+                    b.classList.remove('taken');
+                }
+            });
+
+            // 標記已被佔用的
+            snap.forEach(c => {
+                const p = c.val();
+                if (p.avatar && p.name !== state.playerName) { // 排除自己
+                    // 找到對應的按鈕
+                    AVATAR_OPTIONS.forEach((opt, idx) => {
+                        if (opt === p.avatar) {
+                            const btn = document.getElementById(`av-btn-${idx}`);
+                            if(btn) btn.classList.add('taken');
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    function selectAvatar(av, idx) {
+        const btn = document.getElementById(`av-btn-${idx}`);
+        if (btn.classList.contains('taken')) return; // 不能選被拿走的
+
+        document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        state.avatar = av;
+        document.getElementById('btn-join-confirm').disabled = false;
     }
 
     function confirmJoin() {
         if(!db) return alert("Waiting for connection...");
         const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
+        // 嘗試寫入
         playerRef.set({ name: state.playerName, score: 0, avatar: state.avatar });
-        playerRef.on('value', snap => { if(!snap.exists() && state.role !== 'host') location.reload(); });
+        
+        // 移除監聽器，避免進入遊戲後還在消耗資源
+        db.ref(`games/${state.gameId}/players`).off();
+
         showView('view-student-wait');
         document.getElementById('my-final-avatar').innerText = state.avatar;
         document.getElementById('my-final-name').innerText = state.playerName;
+        
         db.ref(`games/${state.gameId}`).on('value', snap => {
             const game = snap.val();
             if(!game) return;
             state.settings = game.settings;
+            
             if (game.status === 'playing') {
                 document.getElementById('game-freeze-overlay').classList.add('hidden');
                 if (!state.active) {
@@ -403,11 +439,14 @@
                     generateQuestion();
                     startLocalTicker(game.endTime, 'client-timer-display');
                 }
-            } else if (game.status === 'calculating' || game.status === 'finished') {
-                state.active = false;
+            } 
+            // **** 新增：嚴格停止邏輯 ****
+            else if (game.status === 'finished' || game.status === 'calculating') {
+                state.active = false; // 禁止輸入
                 if(localTimerInterval) clearInterval(localTimerInterval);
                 document.getElementById('game-freeze-overlay').classList.remove('hidden');
-            } else if (game.status === 'results') {
+            } 
+            else if (game.status === 'results') {
                 showPodium(game.leaderboard);
             }
         });
@@ -423,6 +462,7 @@
             const left = Math.ceil((endTime - Date.now()) / 1000);
             if(left <= 0) {
                 el.innerText = "00:00";
+                // Host 不在這邊停止，Host 在 main loop 停止
                 if(state.role !== 'host') clearInterval(localTimerInterval);
                 return;
             }
