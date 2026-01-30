@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Arena V13: Stable Host</title>
+    <title>Math Arena V14: Stable Fix</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -24,10 +23,8 @@
         .progress-bar { transition: width 0.3s linear; }
         
         .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_15px_rgba(8,145,178,0.5)] transform transition active:scale-95 w-full mb-3; }
-
         .avatar-btn { @apply text-4xl p-2 rounded-xl border-2 border-transparent transition-all cursor-pointer grayscale opacity-60; }
         .avatar-btn.selected { @apply bg-cyan-500/30 border-cyan-400 grayscale-0 opacity-100 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.3)]; }
-
         .kick-btn { @apply ml-3 text-red-500 hover:text-red-400 font-bold cursor-pointer px-2 py-1 rounded hover:bg-red-900/30 transition-colors; }
 
         @keyframes podium-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -39,10 +36,7 @@
 
     <div id="view-menu" class="text-center space-y-6 p-4 max-w-md w-full hidden z-50">
         <h1 class="text-6xl font-display italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2 neon-text">MATH<br>ARENA</h1>
-        <p class="text-slate-400 text-xs mb-8 tracking-[0.3em]">MULTIPLAYER BATTLE</p>
-        
-        <div id="db-status" class="text-xs text-red-500 font-bold mb-4">🔴 Connecting to Server...</div>
-        
+        <div id="db-status" class="text-xs text-red-500 font-bold mb-4">🔴 Connecting...</div>
         <button onclick="setupHost()" class="btn-primary border-l-4 border-cyan-300 text-xl py-6">📡 HOST GAME</button>
     </div>
 
@@ -54,7 +48,6 @@
                 <div class="text-2xl font-bold text-white mb-2" id="join-count-display">0 PLAYERS</div>
                 <div id="player-grid" class="mt-4 flex flex-wrap justify-center gap-2 w-full max-h-60 overflow-y-auto content-start"></div>
             </div>
-            
             <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col">
                 <div class="mb-6">
                     <label class="block text-slate-400 text-sm mb-2 font-bold">MODE</label>
@@ -65,7 +58,7 @@
                 </div>
                 <div class="mb-6">
                     <label class="block text-slate-400 text-sm mb-2 font-bold" id="setting-label">TIME LIMIT</label>
-                    <input type="range" id="setting-slider" min="30" max="300" step="10" value="60" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer accent-cyan-500">
+                    <input type="range" id="setting-slider" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer accent-cyan-500">
                     <div class="text-right text-cyan-400 text-2xl font-bold mt-2" id="setting-value">60 SEC</div>
                 </div>
                 <button onclick="hostStartGame()" class="btn-primary mt-auto bg-gradient-to-r from-green-500 to-emerald-600 text-2xl py-4">🚀 START</button>
@@ -146,7 +139,7 @@
     <div id="view-podium" class="text-center w-full hidden z-[100] bg-slate-950 absolute inset-0 flex flex-col items-center justify-center">
         <h1 class="text-5xl font-display text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-12 neon-gold z-10">CHAMPIONS</h1>
         <div class="flex items-end justify-center space-x-2 md:space-x-4 mb-12 w-full max-w-3xl px-4 z-10" id="podium-container">
-            <div id="podium-2" class="flex flex-col items-center podium-hidden opacity-0" style="animation-delay: 0.5s">
+            <div id="podium-2" class="flex flex-col items-center podium-hidden opacity-0">
                 <div class="text-4xl mb-2" id="p2-avatar"></div>
                 <div class="text-white font-bold text-sm" id="p2-name"></div>
                 <div class="w-20 md:w-32 h-32 bg-slate-700 rounded-t-lg border-t-4 border-slate-400 flex items-end justify-center pb-2 shadow-lg">
@@ -154,7 +147,7 @@
                 </div>
                 <div class="mt-2 text-cyan-400 font-bold" id="p2-score"></div>
             </div>
-            <div id="podium-1" class="flex flex-col items-center podium-enter opacity-0" style="animation-delay: 1.5s">
+            <div id="podium-1" class="flex flex-col items-center podium-enter opacity-0">
                 <div class="text-7xl mb-2 animate-bounce" id="p1-avatar"></div>
                 <div class="text-yellow-400 font-bold text-xl neon-gold" id="p1-name"></div>
                 <div class="w-24 md:w-40 h-48 bg-gradient-to-b from-yellow-600 to-yellow-800 rounded-t-lg border-t-4 border-yellow-400 flex items-end justify-center pb-4 shadow-[0_0_30px_rgba(234,179,8,0.4)] z-20">
@@ -162,7 +155,7 @@
                 </div>
                 <div class="mt-2 text-yellow-400 text-2xl font-black" id="p1-score"></div>
             </div>
-            <div id="podium-3" class="flex flex-col items-center podium-hidden opacity-0" style="animation-delay: 1.0s">
+            <div id="podium-3" class="flex flex-col items-center podium-hidden opacity-0">
                 <div class="text-4xl mb-2" id="p3-avatar"></div>
                 <div class="text-white font-bold text-sm" id="p3-name"></div>
                 <div class="w-20 md:w-32 h-24 bg-orange-900 rounded-t-lg border-t-4 border-orange-700 flex items-end justify-center pb-2 shadow-lg">
@@ -175,9 +168,6 @@
     </div>
 
 <script>
-    // ======================================
-    // Firebase 初始化 (含錯誤處理)
-    // ======================================
     const firebaseConfig = {
         apiKey: "AIzaSyAYnQB2o5cPn42RiNAik7537ihduICJwdQ",
         authDomain: "fwftmath.firebaseapp.com",
@@ -188,32 +178,18 @@
     };
 
     let app, db;
-    
-    // 檢查 Firebase 是否成功載入
     window.addEventListener('load', () => {
         const statusEl = document.getElementById('db-status');
         try {
-            if (typeof firebase === 'undefined') throw new Error("Firebase SDK failed to load");
             app = firebase.initializeApp(firebaseConfig);
             db = firebase.database();
-            
-            // 測試連線
-            const connectedRef = db.ref(".info/connected");
-            connectedRef.on("value", (snap) => {
-                if (snap.val() === true) {
-                    if(statusEl) {
-                        statusEl.innerText = "🟢 SERVER CONNECTED";
-                        statusEl.className = "text-xs text-green-400 font-bold mb-4";
-                    }
-                } else {
-                    if(statusEl) statusEl.innerText = "🟠 CONNECTING...";
-                }
+            db.ref(".info/connected").on("value", (snap) => {
+                if(statusEl) statusEl.innerText = snap.val() ? "🟢 ONLINE" : "🟠 CONNECTING...";
+                if(statusEl) statusEl.className = snap.val() ? "text-xs text-green-400 font-bold mb-4" : "text-xs text-orange-400 font-bold mb-4";
             });
-            
         } catch (e) {
+            if(statusEl) statusEl.innerText = "❌ ERROR";
             console.error(e);
-            if(statusEl) statusEl.innerText = "❌ SERVER ERROR: " + e.message;
-            alert("Critical Error: Firebase not loaded. Please check internet connection.");
         }
     });
 
@@ -228,8 +204,7 @@
         playerName: 'Guest', avatar: '',
         score: 0, active: false,
         settings: { mode: 'time', target: 60 },
-        q: null, input: '',
-        endTime: 0
+        q: null, input: '', endTime: 0
     };
     let localTimerInterval = null;
 
@@ -241,81 +216,78 @@
         if(id === 'view-game') resizeCanvas();
     }
 
-    window.onload = () => {
-        if(state.gameId) showView('view-join');
-        else showView('view-menu');
-    };
+    window.onload = () => state.gameId ? showView('view-join') : showView('view-menu');
 
     // ======================================
-    // HOST 邏輯 (修復版)
+    // HOST LOGIC (FIXED)
     // ======================================
     function setupHost() {
-        if (!db) {
-            alert("Database not ready yet. Please wait for the green 'CONNECTED' light.");
-            return;
-        }
+        if (!db) return alert("Database not ready.");
+        state.role = 'host';
+        
+        // 1. 先顯示畫面，確保 DOM 元素可見
+        showView('view-host-lobby');
 
-        try {
-            state.role = 'host';
-            
-            // 1. 先切換畫面，讓使用者有反饋
-            showView('view-host-lobby');
+        // 2. 綁定滑桿事件 (先綁定，再設定模式)
+        const slider = document.getElementById('setting-slider');
+        slider.oninput = () => updateSettingsDisplay();
 
-            // 2. 建立遊戲
-            const ref = db.ref('games').push();
-            state.gameId = ref.key;
-            setMode('time');
-            ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
-            
-            // 3. 生成 QR Code
-            const qrContainer = document.getElementById("qrcode");
-            qrContainer.innerHTML = ""; // 清空舊的
-            new QRCode(qrContainer, { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
-            
-            // 4. 監聽玩家
-            db.ref(`games/${state.gameId}/players`).on('value', snap => {
-                const grid = document.getElementById('player-grid');
-                grid.innerHTML = '';
-                let count = 0;
-                snap.forEach(c => {
-                    count++;
-                    const p = c.val();
-                    const div = document.createElement('div');
-                    div.className = "bg-slate-800 px-3 py-2 rounded-lg border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]";
-                    div.innerHTML = `<span class="text-xl">${p.avatar}</span><span class="font-bold text-white">${p.name}</span><button onclick="kickPlayer('${c.key}')" class="kick-btn">❌</button>`;
-                    grid.appendChild(div);
-                });
-                document.getElementById('join-count-display').innerText = `${count} PLAYERS`;
+        // 3. 設定初始模式
+        setMode('time');
+
+        // 4. 建立遊戲
+        const ref = db.ref('games').push();
+        state.gameId = ref.key;
+        ref.set({ status: 'lobby', createdAt: Date.now(), settings: state.settings });
+        
+        // 5. QR Code
+        const qrDiv = document.getElementById("qrcode");
+        qrDiv.innerHTML = "";
+        new QRCode(qrDiv, { text: `${location.origin}${location.pathname}?gid=${state.gameId}`, width: 128, height: 128 });
+        
+        // 6. 監聽玩家
+        db.ref(`games/${state.gameId}/players`).on('value', snap => {
+            const grid = document.getElementById('player-grid');
+            grid.innerHTML = '';
+            let count = 0;
+            snap.forEach(c => {
+                count++;
+                const p = c.val();
+                grid.innerHTML += `<div class="bg-slate-800 px-3 py-2 rounded-lg border border-slate-600 text-sm flex items-center gap-2 animate-[pop_0.3s]"><span class="text-xl">${p.avatar}</span><span class="font-bold text-white">${p.name}</span><button onclick="kickPlayer('${c.key}')" class="kick-btn">❌</button></div>`;
             });
-
-            // 5. 綁定設定滑桿
-            const slider = document.getElementById('setting-slider');
-            slider.oninput = (e) => {
-                state.settings.target = parseInt(e.target.value);
-                document.getElementById('setting-value').innerText = state.settings.mode==='score' ? state.settings.target+" PTS" : state.settings.target+" SEC";
-                // 只有在 gameId 存在時才寫入
-                if(state.gameId) db.ref(`games/${state.gameId}/settings`).update(state.settings);
-            };
-
-        } catch (err) {
-            console.error("Host Setup Error:", err);
-            alert("Error creating game: " + err.message);
-            location.reload(); // 重整頁面
-        }
+            document.getElementById('join-count-display').innerText = `${count} PLAYERS`;
+        });
     }
 
     window.kickPlayer = (pid) => { if(confirm("Kick player?")) db.ref(`games/${state.gameId}/players/${pid}`).remove(); };
 
+    // 獨立的更新顯示函式，防止調用順序錯誤
+    function updateSettingsDisplay() {
+        const slider = document.getElementById('setting-slider');
+        state.settings.target = parseInt(slider.value);
+        document.getElementById('setting-value').innerText = state.settings.mode==='score' ? state.settings.target+" PTS" : state.settings.target+" SEC";
+        if(state.gameId) db.ref(`games/${state.gameId}/settings`).update(state.settings);
+    }
+
     function setMode(mode) {
         state.settings.mode = mode;
         const slider = document.getElementById('setting-slider');
+        
+        // 更新按鈕樣式
         document.getElementById('btn-mode-score').className = mode==='score' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
         document.getElementById('btn-mode-time').className = mode==='time' ? "border border-cyan-500 text-cyan-400 bg-cyan-900/50 py-2 rounded" : "border border-slate-600 text-slate-400 py-2 rounded";
-        if(mode==='score') { document.getElementById('setting-label').innerText="TARGET SCORE"; slider.min=500; slider.max=5000; slider.step=100; slider.value=1000; } 
-        else { document.getElementById('setting-label').innerText="TIME LIMIT"; slider.min=30; slider.max=300; slider.step=10; slider.value=60; }
         
-        // 觸發更新
-        if(state.gameId) slider.oninput({target:slider});
+        // 更新滑桿範圍
+        if(mode==='score') { 
+            document.getElementById('setting-label').innerText="TARGET SCORE"; 
+            slider.min=500; slider.max=5000; slider.step=100; slider.value=1000; 
+        } else { 
+            document.getElementById('setting-label').innerText="TIME LIMIT"; 
+            slider.min=30; slider.max=300; slider.step=10; slider.value=60; 
+        }
+        
+        // 安全地呼叫更新，而不是觸發事件
+        updateSettingsDisplay();
     }
 
     function hostStartGame() {
@@ -327,7 +299,6 @@
         db.ref(`games/${state.gameId}`).update(updateData);
         showView('view-host-game');
         document.getElementById('host-target-display').innerText = state.settings.mode==='score' ? `TARGET: ${state.settings.target}` : "TIME LEFT";
-        
         startLocalTicker(state.settings.mode === 'time' ? state.endTime : null, 'host-timer-display');
         monitorGameLoop();
     }
@@ -337,22 +308,17 @@
         gameRef.on('value', snap => {
             const game = snap.val();
             if(!game) return;
-
             if (game.status === 'playing') {
                 if (game.settings.mode === 'time' && state.role === 'host') {
-                    const left = Math.ceil((game.endTime - Date.now())/1000);
-                    if(left <= 0) executeGameFinish();
+                    if(Math.ceil((game.endTime - Date.now())/1000) <= 0) executeGameFinish();
                 }
             } else if (game.status === 'results') {
                 showPodium(game.leaderboard);
                 gameRef.off();
             }
-
             if(game.players) {
                 const players = Object.values(game.players).sort((a,b)=>(b.score||0)-(a.score||0));
-                if (state.role==='host' && game.status==='playing' && game.settings.mode==='score') {
-                    if(players[0].score >= game.settings.target) executeGameFinish();
-                }
+                if (state.role==='host' && game.status==='playing' && game.settings.mode==='score' && players[0].score >= game.settings.target) executeGameFinish();
                 renderLanes(players, game.settings.target, game.settings.mode);
             }
         });
@@ -362,7 +328,6 @@
         db.ref(`games/${state.gameId}`).update({ status: 'calculating' });
         document.getElementById('host-status-msg').style.opacity = 1;
         if(localTimerInterval) clearInterval(localTimerInterval);
-
         setTimeout(() => {
             db.ref(`games/${state.gameId}/players`).once('value', s => {
                 const arr = [];
@@ -376,7 +341,6 @@
     function renderLanes(players, target, mode) {
         const container = document.getElementById('lanes-container');
         const maxScore = mode==='score' ? target : Math.max(target*5, (players[0].score||0)*1.2);
-        
         players.forEach((p, index) => {
             let el = document.getElementById(`lane-${p.name}`);
             const pct = Math.min(100, ((p.score||0)/maxScore)*100);
@@ -385,14 +349,7 @@
                 el.id = `lane-${p.name}`;
                 el.className = 'lane-item h-12 bg-slate-800/80 rounded flex items-center px-2 border border-slate-700 shadow mx-2';
                 el.style.width = "calc(100% - 32px)";
-                el.innerHTML = `
-                    <div class="w-10 text-2xl mr-2 text-center">${p.avatar}</div>
-                    <div class="w-24 font-bold text-white truncate text-sm">${p.name}</div>
-                    <div class="flex-1 h-4 bg-slate-900 rounded-full overflow-hidden mx-2 border border-slate-600">
-                        <div class="progress-bar h-full bg-gradient-to-r from-cyan-500 to-blue-500" style="width: 0%"></div>
-                    </div>
-                    <div class="w-16 text-right font-mono text-cyan-400 font-bold score-txt">0</div>
-                `;
+                el.innerHTML = `<div class="w-10 text-2xl mr-2 text-center">${p.avatar}</div><div class="w-24 font-bold text-white truncate text-sm">${p.name}</div><div class="flex-1 h-4 bg-slate-900 rounded-full overflow-hidden mx-2 border border-slate-600"><div class="progress-bar h-full bg-gradient-to-r from-cyan-500 to-blue-500" style="width: 0%"></div></div><div class="w-16 text-right font-mono text-cyan-400 font-bold score-txt">0</div>`;
                 container.appendChild(el);
             }
             el.style.top = (index * 60 + 10) + 'px';
@@ -403,7 +360,7 @@
     }
 
     // ======================================
-    // CLIENT 邏輯
+    // CLIENT LOGIC
     // ======================================
     function goToAvatarSelect() {
         const name = document.getElementById('player-name').value.trim();
@@ -427,20 +384,17 @@
     }
 
     function confirmJoin() {
-        if(!db) return alert("Connecting to server...");
+        if(!db) return alert("Waiting for connection...");
         const playerRef = db.ref(`games/${state.gameId}/players/${state.playerId}`);
         playerRef.set({ name: state.playerName, score: 0, avatar: state.avatar });
         playerRef.on('value', snap => { if(!snap.exists() && state.role !== 'host') location.reload(); });
-
         showView('view-student-wait');
         document.getElementById('my-final-avatar').innerText = state.avatar;
         document.getElementById('my-final-name').innerText = state.playerName;
-
         db.ref(`games/${state.gameId}`).on('value', snap => {
             const game = snap.val();
             if(!game) return;
             state.settings = game.settings;
-            
             if (game.status === 'playing') {
                 document.getElementById('game-freeze-overlay').classList.add('hidden');
                 if (!state.active) {
@@ -449,13 +403,11 @@
                     generateQuestion();
                     startLocalTicker(game.endTime, 'client-timer-display');
                 }
-            } 
-            else if (game.status === 'calculating' || game.status === 'finished') {
+            } else if (game.status === 'calculating' || game.status === 'finished') {
                 state.active = false;
                 if(localTimerInterval) clearInterval(localTimerInterval);
                 document.getElementById('game-freeze-overlay').classList.remove('hidden');
-            }
-            else if (game.status === 'results') {
+            } else if (game.status === 'results') {
                 showPodium(game.leaderboard);
             }
         });
@@ -466,24 +418,20 @@
         const el = document.getElementById(elementId);
         updateTime();
         localTimerInterval = setInterval(updateTime, 200);
-
         function updateTime() {
             if(!endTime) { el.innerText = "RACE"; return; }
-            const now = Date.now();
-            const left = Math.ceil((endTime - now) / 1000);
+            const left = Math.ceil((endTime - Date.now()) / 1000);
             if(left <= 0) {
                 el.innerText = "00:00";
                 if(state.role !== 'host') clearInterval(localTimerInterval);
                 return;
             }
-            const m = Math.floor(left / 60);
-            const s = left % 60;
-            el.innerText = `${m}:${s.toString().padStart(2, '0')}`;
+            el.innerText = `${Math.floor(left / 60)}:${(left % 60).toString().padStart(2, '0')}`;
         }
     }
 
     // ======================================
-    // 頒獎台
+    // PODIUM
     // ======================================
     function showPodium(leaders) {
         state.active = false;
@@ -495,29 +443,20 @@
             confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 } });
             if (Date.now() < end) requestAnimationFrame(frame);
         }());
-
         const setP = (rank, p) => {
             const el = document.getElementById(`podium-${rank}`);
-            if(!p) {
-                el.classList.add('podium-hidden');
-                el.classList.remove('podium-enter');
-                return;
-            }
-            el.classList.remove('podium-hidden');
-            el.classList.add('podium-enter');
+            if(!p) { el.classList.add('podium-hidden'); return; }
+            el.classList.remove('podium-hidden'); el.classList.add('podium-enter');
             document.getElementById(`p${rank}-name`).innerText = p.name;
             document.getElementById(`p${rank}-avatar`).innerText = p.avatar;
             document.getElementById(`p${rank}-score`).innerText = p.score;
         };
-
         if(!leaders) leaders = [];
-        setP(1, leaders[0]);
-        setP(2, leaders[1]);
-        setP(3, leaders[2]);
+        setP(1, leaders[0]); setP(2, leaders[1]); setP(3, leaders[2]);
     }
 
     // ======================================
-    // 遊戲題目與邏輯
+    // GAME & MATH
     // ======================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
